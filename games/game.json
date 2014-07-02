@@ -4,7 +4,11 @@
 		"name" : "object1",
 		"components" : [
 		{
-			"type" : "HelloComponent"
+			"type" : "HelloComponent",
+			"values" : {
+				"greetee" : "welt",
+				"number of greets" : 3
+			}
 		}
 		]
 	}
