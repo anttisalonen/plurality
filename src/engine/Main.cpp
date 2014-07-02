@@ -1,72 +1,15 @@
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <map>
-
-#include <boost/shared_ptr.hpp>
-#include <boost/variant.hpp>
 
 #include <jsoncpp/json/json.h>
 
-
-class Component {
-	public:
-		Component(const std::string& name) : mName(name) { }
-		~Component() { }
-		virtual void Start() { }
-		void addValue(std::string name, const std::string& value);
-		void addValue(std::string name, int value);
-
-	protected:
-		std::string mName;
-		std::map<std::string, boost::variant<std::string, int>> mValues;
-};
-
-void Component::addValue(std::string name, const std::string& value)
-{
-	mValues[name] = value;
-}
-
-void Component::addValue(std::string name, int value)
-{
-	mValues[name] = value;
-}
-
-typedef boost::shared_ptr<Component> ComponentPtr;
-
-class GameObject {
-	public:
-		GameObject(const std::string& name) : mName(name) { }
-		void addComponent(ComponentPtr c) { mComponents.push_back(c); }
-		std::vector<ComponentPtr> getComponents() { return mComponents; }
-
-	private:
-		std::string mName;
-		std::vector<ComponentPtr> mComponents;
-};
-
-class HelloComponent : public Component {
-	public:
-		HelloComponent();
-		virtual void Start() override;
-};
-
-HelloComponent::HelloComponent()
-	: Component("HelloComponent")
-{
-}
-
-void HelloComponent::Start()
-{
-	const std::string& g = boost::get<std::string>(mValues["greetee"]);
-	int num = boost::get<int>(mValues["number of greets"]);
-	for(int i = 0; i < num; i++)
-		std::cout << "Hello " << g << "!\n";
-}
+#include "GameObject.hpp"
+#include "components/HelloComponent.hpp"
 
 void runGame(const Json::Value& root)
 {
-	
 	std::vector<GameObject> Objects;
 	for(auto& jo : root["objects"]) {
 		GameObject obj(jo["name"].asString());
@@ -104,8 +47,37 @@ void runGame(const Json::Value& root)
 	Objects.clear();
 }
 
+int outputInterface(const char* filename)
+{
+	Json::Value root;
+	root["components"] = Json::Value();
+
+	ComponentPtr comp = ComponentPtr(new HelloComponent());
+	Json::Value jcomp;
+	jcomp["name"] = comp->getName();
+	Json::Value jvalues;
+
+	auto m = comp->getPossibleValues();
+	for(const auto& mp : m) {
+		jvalues[mp.first] = mp.second;
+	}
+	jcomp["values"] = jvalues;
+	root["components"].append(jcomp);
+
+	Json::StyledWriter writer;
+	std::ofstream out(filename);
+	out << writer.write(root);
+	return 0;
+}
+
 int main(int argc, char** argv)
 {
+	if(argc == 3) {
+		if(!strcmp(argv[1], "-o")) {
+			outputInterface(argv[2]);
+			exit(0);
+		}
+	}
 	if(argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " <game JSON file>\n";
 		exit(1);
