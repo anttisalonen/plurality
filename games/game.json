@@ -1,0 +1,12 @@
+{
+	"objects" : [
+	{
+		"name" : "object1",
+		"components" : [
+		{
+			"type" : "HelloComponent"
+		}
+		]
+	}
+	]
+}
