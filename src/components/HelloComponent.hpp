@@ -21,15 +21,15 @@ HelloComponent::HelloComponent()
 std::map<std::string, std::string> HelloComponent::getPossibleValues() const
 {
 	return {
-		{"greetee", "string"},
-		{"number of greets", "int"}
+		{"Greetee", "string"},
+		{"NumGreets", "int"}
 	};
 }
 
 void HelloComponent::Start()
 {
-	const std::string& g = boost::get<std::string>(mValues["greetee"]);
-	int num = boost::get<int>(mValues["number of greets"]);
+	const std::string& g = boost::get<std::string>(mValues["Greetee"]);
+	int num = boost::get<int>(mValues["NumGreets"]);
 	for(int i = 0; i < num; i++)
 		std::cout << "Hello " << g << "!\n";
 }
