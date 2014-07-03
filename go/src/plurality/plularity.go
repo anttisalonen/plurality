@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"io/ioutil"
+	"time"
 )
 
 type Named interface {
@@ -91,6 +92,15 @@ func runGame(objects []GameObject) {
 			(*comp).Start()
 		}
 	}
+
+	for {
+		time.Sleep(100 * time.Millisecond)
+		for _, obj := range objects {
+			for _, comp := range obj.components {
+				(*comp).Update()
+			}
+		}
+	}
 }
 
 func outputInterfaceAndExit(filename string) {
@@ -104,6 +114,9 @@ func outputInterfaceAndExit(filename string) {
 		compType := reflect.TypeOf(compInst).Elem()
 		for i := 0; i < compType.NumField(); i++ {
 			p := compType.Field(i)
+			if p.Name == "Component" {
+				continue
+			}
 			t := p.Type.Kind()
 			var str string
 			switch t {
@@ -114,7 +127,7 @@ func outputInterfaceAndExit(filename string) {
 			case reflect.Bool:
 				str = "bool"
 			default:
-				fmt.Println("Unknown type %s", t)
+				fmt.Println("Unknown type", t)
 			}
 			if len(str) > 0 {
 				values[p.Name] = str

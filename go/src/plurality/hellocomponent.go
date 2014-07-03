@@ -1,16 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
-var componentName string = "HelloComponent"
+var helloComponentName string = "HelloComponent"
 
 type HelloComponent struct {
 	Greetee string
 	NumGreets int
+	Component
 }
 
 func (c *HelloComponent) Name() string {
-	return componentName
+	return helloComponentName
 }
 
 func (c *HelloComponent) Start() {
@@ -20,6 +23,6 @@ func (c *HelloComponent) Start() {
 }
 
 func init() {
-	ComponentNameMap[componentName] = func() Componenter { return &HelloComponent{} }
+	ComponentNameMap[helloComponentName] = func() Componenter { return &HelloComponent{} }
 }
 

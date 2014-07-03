@@ -9,6 +9,11 @@
 				"Greetee" : "welt",
 				"NumGreets" : 3
 			}
+		},
+		{
+			"type" : "CameraComponent",
+			"values" : {
+			}
 		}
 		]
 	}
