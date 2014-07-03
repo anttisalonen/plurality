@@ -114,7 +114,7 @@ func outputInterfaceAndExit(filename string) {
 		compType := reflect.TypeOf(compInst).Elem()
 		for i := 0; i < compType.NumField(); i++ {
 			p := compType.Field(i)
-			if p.Name == "Component" {
+			if p.Anonymous || p.PkgPath != "" {
 				continue
 			}
 			t := p.Type.Kind()
@@ -127,7 +127,7 @@ func outputInterfaceAndExit(filename string) {
 			case reflect.Bool:
 				str = "bool"
 			default:
-				fmt.Println("Unknown type", t)
+				fmt.Println("Unknown type", t, "for", p.Name)
 			}
 			if len(str) > 0 {
 				values[p.Name] = str
