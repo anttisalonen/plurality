@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"encoding/json"
 	"os"
-	"io/ioutil"
 	"reflect"
 )
 
@@ -24,15 +23,16 @@ func main() {
 	}
 
 	filename := os.Args[1]
-	var filecontents []byte
-	filecontents, err := ioutil.ReadFile(filename)
+	f, err := os.Open(filename)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
 	var jsonData map[string]interface{}
-	if err := json.Unmarshal(filecontents, &jsonData); err != nil {
+	dec := json.NewDecoder(f)
+	dec.UseNumber()
+	if err := dec.Decode(&jsonData); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -51,13 +51,20 @@ func main() {
 			obj.components = append(obj.components, &compInst)
 
 			for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
-				switch typ := jvaluedata.(type) {
-				case string:
-					reflect.ValueOf(compInst).Elem().FieldByName(jvaluename).SetString(jvaluedata.(string))
-				case int:
-					reflect.ValueOf(compInst).Elem().FieldByName(jvaluename).SetInt(jvaluedata.(int64))
-				case float64:
-					reflect.ValueOf(compInst).Elem().FieldByName(jvaluename).SetInt(int64(jvaluedata.(float64)))
+				compValue := reflect.ValueOf(compInst).Elem()
+				fieldValue := compValue.FieldByName(jvaluename)
+				typ := fieldValue.Kind()
+				switch typ {
+				case reflect.Bool:
+					fieldValue.SetBool(jvaluedata.(bool))
+				case reflect.Int:
+					v, err := jvaluedata.(json.Number).Int64()
+					if err != nil {
+						fmt.Println("Error on field %s: %s", jvaluename, err)
+					}
+					fieldValue.SetInt(v)
+				case reflect.String:
+					fieldValue.SetString(jvaluedata.(string))
 				default:
 					fmt.Println("Unknown type", typ)
 				}
