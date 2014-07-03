@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"reflect"
+	"io/ioutil"
 )
 
 type Named interface {
@@ -22,6 +23,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if os.Args[1] == "-o" && len(os.Args) == 3 {
+		outputInterfaceAndExit(os.Args[2])
+	}
+
 	filename := os.Args[1]
 	f, err := os.Open(filename)
 	if err != nil {
@@ -37,6 +42,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	loadGame(jsonData)
+}
+
+func loadGame(jsonData map[string]interface{}) {
 	var objects = []GameObject{}
 	objs := jsonData["objects"].([]interface{})
 	for _, jobj := range objs {
@@ -82,4 +91,48 @@ func runGame(objects []GameObject) {
 			(*comp).Start()
 		}
 	}
+}
+
+func outputInterfaceAndExit(filename string) {
+	v := make(map[string]interface{})
+	var components []interface{}
+	for k, v := range ComponentNameMap {
+		comp := make(map[string]interface{})
+		comp["name"] = k
+		values := make(map[string]string)
+		compInst := v()
+		compType := reflect.TypeOf(compInst).Elem()
+		for i := 0; i < compType.NumField(); i++ {
+			p := compType.Field(i)
+			t := p.Type.Kind()
+			var str string
+			switch t {
+			case reflect.Int:
+				str = "int"
+			case reflect.String:
+				str = "string"
+			case reflect.Bool:
+				str = "bool"
+			default:
+				fmt.Println("Unknown type %s", t)
+			}
+			if len(str) > 0 {
+				values[p.Name] = str
+			}
+		}
+		comp["values"] = values
+		components = append(components, comp)
+	}
+	v["components"] = components
+	b, err := json.MarshalIndent(v, "", "    ")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	err = ioutil.WriteFile(filename, b, 0644)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
