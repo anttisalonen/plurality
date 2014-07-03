@@ -11,10 +11,12 @@ class Editor(wx.Frame):
         self.selectedObject = None
         menubar = wx.MenuBar()
         fileMenu = wx.Menu()
+        saveItem = fileMenu.Append(wx.ID_SAVE, 'Save', 'Save')
         fitem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
         menubar.Append(fileMenu, '&File')
         self.SetMenuBar(menubar)
 
+        self.Bind(wx.EVT_MENU, self.OnSave, saveItem)
         self.Bind(wx.EVT_MENU, self.OnQuit, fitem)
 
         self.SetSize((800, 600))
@@ -63,6 +65,9 @@ class Editor(wx.Frame):
             self.tc.SetValue("")
             self.updateGUI()
 
+    def OnSave(self, e):
+        self.model.save()
+
     def OnQuit(self, e):
         self.Close()
 
@@ -83,22 +88,32 @@ class Editor(wx.Frame):
         self.ComponentWidgets = list()
 
         if self.selectedObject:
-            self.ComponentWidgets.append(wx.StaticText(self.panel, label=self.selectedObject['name']))
-            for comp in self.selectedObject['components']:
+            objname = self.selectedObject['name']
+            self.ComponentWidgets.append(wx.StaticText(self.panel, label=objname))
+            for comp in sorted(self.selectedObject['components'], key = lambda x: x['type']):
                 compname = comp['type']
                 complayout = self.model.components[compname]
-                for vname, vtype in complayout['values'].items():
+                self.ComponentWidgets.append(wx.StaticText(self.panel, label=compname))
+                for vname, vtype in sorted(complayout['values'].items()):
                     self.ComponentWidgets.append(wx.StaticText(self.panel, label=vname))
                     w = wx.TextCtrl(self.panel)
                     w.SetValue(str(comp['values'][vname]))
+                    for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
+                        w.Bind(ev, lambda event, compdata=(objname,compname,vname,vtype,w): self.ComponentChanged(event, compdata))
                     self.ComponentWidgets.append(w)
 
         for widget in self.ComponentWidgets:
             self.vbox2.Add(widget, wx.EXPAND)
         self.panel.SetSizerAndFit(self.hbox)
 
+    def ComponentChanged(self, e, compdata):
+        objname, compname, vname, vtype, w = compdata
+        newVal = w.GetValue()
+        self.model.setComponentValue(objname, compname, vname, vtype, newVal)
+
 class Model(object):
-    def __init__(self, compdata, gamedata):
+    def __init__(self, compdata, gamedata, gamefilename):
+        self.gamefilename = gamefilename
         self.components = dict()
         for c in compdata['components']:
             self.components[c['name']] = c
@@ -116,6 +131,29 @@ class Model(object):
         else:
             return False
 
+    def setComponentValue(self, objname, compname, vname, vtype, newVal):
+        def convert(val, t):
+            if t == 'string':
+                return val
+            elif t == 'int':
+                return int(val)
+            elif t == 'bool':
+                return bool(val)
+
+        obj = self.objects[objname]
+        for c in obj['components']:
+            if c['type'] == compname:
+                assert vname in c['values']
+                c['values'][vname] = convert(newVal, vtype)
+                return
+        assert False, 'Component %s not found in object %s' % (compname, objname)
+
+    def save(self):
+        game = dict()
+        game['objects'] = self.objects.values()
+        with open(self.gamefilename, 'w') as f:
+            f.write(json.dumps(game, indent=4))
+
 def main():
     ed = wx.App()
     try:
@@ -129,7 +167,7 @@ def main():
         gamedata = json.loads(open(gamefilename, 'r').read())
     except IOError:
         gamedata = {'objects':[]}
-    model = Model(compdata, gamedata)
+    model = Model(compdata, gamedata, gamefilename)
     e = Editor(None)
     e.setModel(model)
     ed.MainLoop()    

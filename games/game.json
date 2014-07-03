@@ -1,23 +1,23 @@
 {
-	"objects" : [
-	{
-		"name" : "object1",
-		"components" : [
-		{
-			"type" : "HelloComponent",
-			"values" : {
-				"Greetee" : "welt",
-				"NumGreets" : 3
-			}
-		},
-		{
-			"type" : "CameraComponent",
-			"values" : {
-				"ScreenWidth" : 800,
-				"ScreenHeight" : 600
-			}
-		}
-		]
-	}
-	]
+    "objects": [
+        {
+            "name": "object1", 
+            "components": [
+                {
+                    "type": "HelloComponent", 
+                    "values": {
+                        "NumGreets": 3, 
+                        "Greetee": "welt"
+                    }
+                }, 
+                {
+                    "type": "CameraComponent", 
+                    "values": {
+                        "ScreenHeight": 600, 
+                        "ScreenWidth": 800
+                    }
+                }
+            ]
+        }
+    ]
 }
