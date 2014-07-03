@@ -8,6 +8,8 @@ var cameraComponentName string = "CameraComponent"
 
 type CameraComponent struct {
 	Component
+	ScreenWidth int
+	ScreenHeight int
 }
 
 func (c *CameraComponent) Name() string {
@@ -16,8 +18,7 @@ func (c *CameraComponent) Name() string {
 
 func (c *CameraComponent) Start() {
 	sdl.Init(sdl.INIT_EVERYTHING)
-	//_ = sdl.CreateRGBSurface(0, 640, 480, 32, 0, 0, 0, 0)
-	_ = sdl.SetVideoMode(640, 480, 32, 0)
+	_ = sdl.SetVideoMode(c.ScreenWidth, c.ScreenHeight, 32, 0)
 }
 
 func init() {
