@@ -6,7 +6,7 @@ import (
 	"os"
 	"reflect"
 	"io/ioutil"
-	"time"
+	"runtime"
 )
 
 type Named interface {
@@ -19,6 +19,8 @@ type GameObject struct {
 }
 
 func main() {
+	// OpenGL needs to be locked on this thread - see http://stackoverflow.com/questions/21010854/golang-fmt-println-causes-game-crash
+	runtime.LockOSThread()
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: %s <game JSON file>", os.Args[0])
 		os.Exit(1)
@@ -93,8 +95,7 @@ func runGame(objects []GameObject) {
 		}
 	}
 
-	for {
-		time.Sleep(100 * time.Millisecond)
+	for i := 0; i < 50; i++ {
 		for _, obj := range objects {
 			for _, comp := range obj.components {
 				(*comp).Update()
