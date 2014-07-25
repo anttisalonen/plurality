@@ -104,10 +104,16 @@ class Editor(wx.Frame):
         if self.selectedObject:
             objname = self.selectedObject['name']
             self.ComponentWidgets.append(wx.StaticText(self.panel, label=objname))
+
             for comp in sorted(self.selectedObject['components'], key = lambda x: x['type']):
                 compname = comp['type']
                 complayout = self.model.components[compname]
                 self.ComponentWidgets.append(wx.StaticText(self.panel, label=compname))
+
+                b = wx.Button(self.panel, label='delete')
+                b.Bind(wx.EVT_BUTTON, lambda event, compdata=(objname, compname): self.RemoveComponent(event, compdata))
+                self.ComponentWidgets.append(b)
+
                 for vname, vtype in sorted(complayout['values'].items()):
                     self.ComponentWidgets.append(wx.StaticText(self.panel, label=vname))
                     w = wx.TextCtrl(self.panel)
@@ -124,6 +130,11 @@ class Editor(wx.Frame):
         objname, compname, vname, vtype, w = compdata
         newVal = w.GetValue()
         self.model.setComponentValue(objname, compname, vname, vtype, newVal)
+
+    def RemoveComponent(self, e, compdata):
+        objname, compname = compdata
+        self.model.removeComponent(objname, compname)
+        self.updateComponentView()
 
 class Model(object):
     def __init__(self, compdata, gamedata, gamefilename):
@@ -188,6 +199,10 @@ class Model(object):
                 c['values'][vname] = convert(newVal, vtype)
                 return
         assert False, 'Component %s not found in object %s' % (comptype, objname)
+
+    def removeComponent(self, objname, comptype):
+        obj = self.objects[objname]
+        obj['components'] = [c for c in obj['components'] if c['type'] != comptype]
 
     def save(self):
         game = dict()
