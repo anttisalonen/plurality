@@ -43,9 +43,9 @@ class Editor(wx.Frame):
 
         self.newObjCtrl.Bind(wx.EVT_KEY_UP, self.OnNewObject)
 
-        self.newCompCtrl = wx.TextCtrl(self.panel)
+        self.newCompCtrl = wx.Button(self.panel, label='Add component')
         self.vbox1.Add(self.newCompCtrl)
-        self.newCompCtrl.Bind(wx.EVT_KEY_UP, self.OnNewComponent)
+        self.newCompCtrl.Bind(wx.EVT_BUTTON, self.OnNewComponent)
         self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
         self.vbox1.Add(self.compTypeCtrl)
         self.compTypeCtrl.SetSelection(0)
@@ -66,18 +66,15 @@ class Editor(wx.Frame):
             self.updateComponentView()
 
     def OnNewComponent(self, e):
-        key = e.GetKeyCode()
-        if key == wx.WXK_RETURN:
-            self.addComponent(self.newCompCtrl.GetValue(), self.compTypeCtrl.GetValue())
+        self.addComponent(self.compTypeCtrl.GetValue())
 
     def OnNewObject(self, e):
         key = e.GetKeyCode()
         if key == wx.WXK_RETURN:
             self.addObject(self.newObjCtrl.GetValue())
 
-    def addComponent(self, compname, comptype):
-        if self.model.addComponent(self.selectedObject['name'], compname, comptype):
-            self.newCompCtrl.SetValue("")
+    def addComponent(self, comptype):
+        if self.model.addComponent(self.selectedObject['name'], comptype):
             self.updateGUI()
 
     def addObject(self, objname):
@@ -141,19 +138,21 @@ class Model(object):
     def getAvailableComponentTypes(self):
         return [c['name'] for c in self.components.values()]
 
-    def addComponent(self, objname, compname, comptype):
+    def addComponent(self, objname, comptype):
         obj = self.objects[objname]
-        if compname:
-            comp = dict()
-            comp['name'] = compname
-            comp['type'] = comptype
-            comp['values'] = dict()
-            for valuename, valuetype in self.components[comptype]['values'].items():
-                comp['values'][valuename] = self.getDefault(valuetype)
-            obj['components'].append(comp)
-            return True
-        else:
-            return False
+
+        for c in obj['components']:
+            if c['type'] == comptype:
+                print 'Object already has component of type', comptype
+                return False
+
+        comp = dict()
+        comp['type'] = comptype
+        comp['values'] = dict()
+        for valuename, valuetype in self.components[comptype]['values'].items():
+            comp['values'][valuename] = self.getDefault(valuetype)
+        obj['components'].append(comp)
+        return True
 
     def getDefault(self, valuetype):
         if valuetype == 'string':
@@ -173,7 +172,7 @@ class Model(object):
         else:
             return False
 
-    def setComponentValue(self, objname, compname, vname, vtype, newVal):
+    def setComponentValue(self, objname, comptype, vname, vtype, newVal):
         def convert(val, t):
             if t == 'string':
                 return val
@@ -184,11 +183,11 @@ class Model(object):
 
         obj = self.objects[objname]
         for c in obj['components']:
-            if c['type'] == compname:
+            if c['type'] == comptype:
                 assert vname in c['values']
                 c['values'][vname] = convert(newVal, vtype)
                 return
-        assert False, 'Component %s not found in object %s' % (compname, objname)
+        assert False, 'Component %s not found in object %s' % (comptype, objname)
 
     def save(self):
         game = dict()
