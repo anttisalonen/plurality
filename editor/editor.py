@@ -27,36 +27,37 @@ class Editor(wx.Frame):
         self.Show(True)
 
         self.panel = wx.Panel(self)
-        self.hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.vbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.hbox2 = wx.BoxSizer(wx.HORIZONTAL)
-        self.vbox2 = wx.BoxSizer(wx.VERTICAL)
+        self.mainbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.leftbox = wx.BoxSizer(wx.VERTICAL)
+        self.rightbox = wx.BoxSizer(wx.VERTICAL)
         st1 = wx.StaticText(self.panel, label='New Game Object')
-        self.vbox1.Add(st1, flag=wx.RIGHT, border=8)
+        self.leftbox.Add(st1, flag=wx.RIGHT, border=8)
 
         self.newObjCtrl = wx.TextCtrl(self.panel)
-        self.vbox1.Add(self.newObjCtrl)
-        self.removeObjButton = wx.Button(self.panel, label='Delete object')
-        self.removeObjButton.Bind(wx.EVT_BUTTON, self.OnRemoveObject)
-        self.vbox1.Add(self.removeObjButton)
+        self.leftbox.Add(self.newObjCtrl)
 
-        self.vbox1.Add(self.hbox2)
-        self.hbox.Add(self.vbox1, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
-        self.hbox.Add(self.vbox2, flag=wx.EXPAND|wx.RIGHT, border=10)
-        self.panel.SetSizerAndFit(self.hbox)
+        self.mainbox.Add(self.leftbox, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
+        self.mainbox.Add(self.rightbox, flag=wx.EXPAND|wx.RIGHT, border=10)
+        self.panel.SetSizerAndFit(self.mainbox)
 
         self.newObjCtrl.Bind(wx.EVT_KEY_UP, self.OnNewObject)
 
-        self.newCompCtrl = wx.Button(self.panel, label='Add component')
-        self.vbox1.Add(self.newCompCtrl)
-        self.newCompCtrl.Bind(wx.EVT_BUTTON, self.OnNewComponent)
-        self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
-        self.vbox1.Add(self.compTypeCtrl)
-        self.compTypeCtrl.SetSelection(0)
-
         self.tree = wx.TreeCtrl(self.panel, size=(400,300))
         self.tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnActiveTree)
-        self.hbox2.Add(self.tree, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, border=10)
+        self.leftbox.Add(self.tree, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, border=10)
+
+        self.removeObjButton = wx.Button(self.panel, label='Delete selected object')
+        self.removeObjButton.Bind(wx.EVT_BUTTON, self.OnRemoveObject)
+        self.leftbox.Add(self.removeObjButton)
+
+        self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
+        self.leftbox.Add(self.compTypeCtrl)
+        self.compTypeCtrl.SetSelection(0)
+
+        self.newCompCtrl = wx.Button(self.panel, label='Add component')
+        self.leftbox.Add(self.newCompCtrl)
+        self.newCompCtrl.Bind(wx.EVT_BUTTON, self.OnNewComponent)
+
         self.updateGUI()
 
     def OnActiveTree(self, e):
@@ -106,7 +107,7 @@ class Editor(wx.Frame):
     def updateComponentView(self):
         for widget in self.ComponentWidgets:
             widget.Destroy()
-        self.panel.SetSizerAndFit(self.hbox)
+        self.panel.SetSizerAndFit(self.mainbox)
         self.ComponentWidgets = list()
 
         if self.selectedObject:
@@ -131,8 +132,8 @@ class Editor(wx.Frame):
                     self.ComponentWidgets.append(w)
 
         for widget in self.ComponentWidgets:
-            self.vbox2.Add(widget, wx.EXPAND)
-        self.panel.SetSizerAndFit(self.hbox)
+            self.rightbox.Add(widget, wx.EXPAND)
+        self.panel.SetSizerAndFit(self.mainbox)
 
     def ComponentChanged(self, e, compdata):
         objname, compname, vname, vtype, w = compdata
