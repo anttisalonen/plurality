@@ -98,7 +98,19 @@ func runGame(objects []GameObject) {
 	for i := 0; i < 50; i++ {
 		for _, obj := range objects {
 			for _, comp := range obj.components {
+				(*comp).PreUpdate()
+			}
+		}
+
+		for _, obj := range objects {
+			for _, comp := range obj.components {
 				(*comp).Update()
+			}
+		}
+
+		for _, obj := range objects {
+			for _, comp := range obj.components {
+				(*comp).PostUpdate()
 			}
 		}
 	}

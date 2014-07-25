@@ -4,18 +4,27 @@
             "name": "object1", 
             "components": [
                 {
-                    "type": "HelloComponent", 
                     "values": {
                         "NumGreets": 3, 
                         "Greetee": "welt"
-                    }
+                    }, 
+                    "type": "HelloComponent"
                 }, 
                 {
-                    "type": "CameraComponent", 
                     "values": {
                         "ScreenHeight": 600, 
                         "ScreenWidth": 800
-                    }
+                    }, 
+                    "type": "CameraComponent"
+                }
+            ]
+        }, 
+        {
+            "name": "abc", 
+            "components": [
+                {
+                    "type": "RectangleComponent", 
+                    "values": {}
                 }
             ]
         }
