@@ -6,6 +6,8 @@ import wx
 
 class Editor(wx.Frame):
     def __init__(self, *args, **kwargs):
+        self.model = kwargs['model']
+        del kwargs['model']
         super(Editor, self).__init__(*args, **kwargs) 
         self.ComponentWidgets = list()
         self.selectedObject = None
@@ -32,18 +34,26 @@ class Editor(wx.Frame):
         st1 = wx.StaticText(self.panel, label='New Game Object')
         self.vbox1.Add(st1, flag=wx.RIGHT, border=8)
 
-        self.tc = wx.TextCtrl(self.panel)
-        self.vbox1.Add(self.tc)
+        self.newObjCtrl = wx.TextCtrl(self.panel)
+        self.vbox1.Add(self.newObjCtrl)
         self.vbox1.Add(self.hbox2)
         self.hbox.Add(self.vbox1, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
         self.hbox.Add(self.vbox2, flag=wx.EXPAND|wx.RIGHT, border=10)
         self.panel.SetSizerAndFit(self.hbox)
 
-        self.tc.Bind(wx.EVT_KEY_UP, self.OnNewObject)
+        self.newObjCtrl.Bind(wx.EVT_KEY_UP, self.OnNewObject)
+
+        self.newCompCtrl = wx.TextCtrl(self.panel)
+        self.vbox1.Add(self.newCompCtrl)
+        self.newCompCtrl.Bind(wx.EVT_KEY_UP, self.OnNewComponent)
+        self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
+        self.vbox1.Add(self.compTypeCtrl)
+        self.compTypeCtrl.SetSelection(0)
 
         self.tree = wx.TreeCtrl(self.panel, size=(400,300))
         self.tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnActiveTree)
         self.hbox2.Add(self.tree, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, border=10)
+        self.updateGUI()
 
     def OnActiveTree(self, e):
         tid = self.tree.GetSelection()
@@ -55,14 +65,24 @@ class Editor(wx.Frame):
         finally:
             self.updateComponentView()
 
+    def OnNewComponent(self, e):
+        key = e.GetKeyCode()
+        if key == wx.WXK_RETURN:
+            self.addComponent(self.newCompCtrl.GetValue(), self.compTypeCtrl.GetValue())
+
     def OnNewObject(self, e):
         key = e.GetKeyCode()
         if key == wx.WXK_RETURN:
-            self.addObject(self.tc.GetValue())
+            self.addObject(self.newObjCtrl.GetValue())
+
+    def addComponent(self, compname, comptype):
+        if self.model.addComponent(self.selectedObject['name'], compname, comptype):
+            self.newCompCtrl.SetValue("")
+            self.updateGUI()
 
     def addObject(self, objname):
         if self.model.addObject(objname):
-            self.tc.SetValue("")
+            self.newObjCtrl.SetValue("")
             self.updateGUI()
 
     def OnSave(self, e):
@@ -71,16 +91,13 @@ class Editor(wx.Frame):
     def OnQuit(self, e):
         self.Close()
 
-    def setModel(self, m):
-        self.model = m
-        self.updateGUI()
-
     def updateGUI(self):
         self.tree.DeleteAllItems()
         self.treeRoot = self.tree.AddRoot("Objects")
         for objname, obj in sorted(self.model.objects.items()):
             tid = self.tree.AppendItem(self.treeRoot, objname)
         self.tree.ExpandAll()
+        self.updateComponentView()
 
     def updateComponentView(self):
         for widget in self.ComponentWidgets:
@@ -121,11 +138,36 @@ class Model(object):
         for o in gamedata['objects']:
             self.objects[o['name']] = o
 
+    def getAvailableComponentTypes(self):
+        return [c['name'] for c in self.components.values()]
+
+    def addComponent(self, objname, compname, comptype):
+        obj = self.objects[objname]
+        if compname:
+            comp = dict()
+            comp['name'] = compname
+            comp['type'] = comptype
+            comp['values'] = dict()
+            for valuename, valuetype in self.components[comptype]['values'].items():
+                comp['values'][valuename] = self.getDefault(valuetype)
+            obj['components'].append(comp)
+            return True
+        else:
+            return False
+
+    def getDefault(self, valuetype):
+        if valuetype == 'string':
+            return ''
+        elif valuetype == 'int':
+            return 0
+        elif valuetype == 'bool':
+            return False
+
     def addObject(self, objname):
         if objname and objname not in self.objects:
             obj = dict()
             obj['name'] = objname
-            obj['components'] = dict()
+            obj['components'] = list()
             self.objects[objname] = obj
             return True
         else:
@@ -168,8 +210,7 @@ def main():
     except IOError:
         gamedata = {'objects':[]}
     model = Model(compdata, gamedata, gamefilename)
-    e = Editor(None)
-    e.setModel(model)
+    e = Editor(None, model=model)
     ed.MainLoop()    
 
 if __name__ == '__main__':
