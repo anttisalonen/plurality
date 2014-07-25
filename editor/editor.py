@@ -36,6 +36,10 @@ class Editor(wx.Frame):
 
         self.newObjCtrl = wx.TextCtrl(self.panel)
         self.vbox1.Add(self.newObjCtrl)
+        self.removeObjButton = wx.Button(self.panel, label='Delete object')
+        self.removeObjButton.Bind(wx.EVT_BUTTON, self.OnRemoveObject)
+        self.vbox1.Add(self.removeObjButton)
+
         self.vbox1.Add(self.hbox2)
         self.hbox.Add(self.vbox1, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
         self.hbox.Add(self.vbox2, flag=wx.EXPAND|wx.RIGHT, border=10)
@@ -75,12 +79,12 @@ class Editor(wx.Frame):
 
     def addComponent(self, comptype):
         if self.model.addComponent(self.selectedObject['name'], comptype):
-            self.updateGUI()
+            self.updateComponentView()
 
     def addObject(self, objname):
         if self.model.addObject(objname):
             self.newObjCtrl.SetValue("")
-            self.updateGUI()
+            self.updateTreeView()
 
     def OnSave(self, e):
         self.model.save()
@@ -89,16 +93,20 @@ class Editor(wx.Frame):
         self.Close()
 
     def updateGUI(self):
+        self.updateTreeView()
+        self.updateComponentView()
+
+    def updateTreeView(self):
         self.tree.DeleteAllItems()
         self.treeRoot = self.tree.AddRoot("Objects")
         for objname, obj in sorted(self.model.objects.items()):
             tid = self.tree.AppendItem(self.treeRoot, objname)
         self.tree.ExpandAll()
-        self.updateComponentView()
 
     def updateComponentView(self):
         for widget in self.ComponentWidgets:
             widget.Destroy()
+        self.panel.SetSizerAndFit(self.hbox)
         self.ComponentWidgets = list()
 
         if self.selectedObject:
@@ -135,6 +143,12 @@ class Editor(wx.Frame):
         objname, compname = compdata
         self.model.removeComponent(objname, compname)
         self.updateComponentView()
+
+    def OnRemoveObject(self, e):
+        if self.selectedObject:
+            self.model.removeObject(self.selectedObject['name'])
+            self.selectedObject = None
+            self.updateGUI()
 
 class Model(object):
     def __init__(self, compdata, gamedata, gamefilename):
@@ -203,6 +217,9 @@ class Model(object):
     def removeComponent(self, objname, comptype):
         obj = self.objects[objname]
         obj['components'] = [c for c in obj['components'] if c['type'] != comptype]
+
+    def removeObject(self, objname):
+        del self.objects[objname]
 
     def save(self):
         game = dict()
