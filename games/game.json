@@ -11,11 +11,8 @@
                     "type": "HelloComponent"
                 }, 
                 {
-                    "values": {
-                        "ScreenHeight": 600, 
-                        "ScreenWidth": 800
-                    }, 
-                    "type": "CameraComponent"
+                    "type": "CameraComponent",
+		    "values": {}
                 }
             ]
         }, 
@@ -24,7 +21,9 @@
             "components": [
                 {
                     "type": "RectangleComponent", 
-                    "values": {}
+                    "values": {
+			    "Position": [0.3, -0.3]
+		    }
                 }
             ]
         }

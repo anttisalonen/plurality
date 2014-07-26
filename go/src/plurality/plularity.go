@@ -18,6 +18,16 @@ type GameObject struct {
 	components []*Componenter
 }
 
+type GameApp struct {
+	objects []GameObject
+	graphics Graphics
+}
+
+type Vector2 struct {
+	X float64
+	Y float64
+}
+
 func main() {
 	// OpenGL needs to be locked on this thread - see http://stackoverflow.com/questions/21010854/golang-fmt-println-causes-game-crash
 	runtime.LockOSThread()
@@ -45,10 +55,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	loadGame(jsonData)
+	var game GameApp
+	game.Prepare()
+	game.Run(jsonData)
 }
 
-func loadGame(jsonData map[string]interface{}) {
+func (game *GameApp) Prepare() {
+	game.graphics.Init(800, 600)
+}
+
+func (game *GameApp) Run(jsonData map[string]interface{}) {
+	game.objects = loadGame(jsonData)
+	runGame(game)
+}
+
+func loadGame(jsonData map[string]interface{}) []GameObject {
 	var objects = []GameObject{}
 	objs := jsonData["objects"].([]interface{})
 	for _, jobj := range objs {
@@ -77,18 +98,45 @@ func loadGame(jsonData map[string]interface{}) {
 					fieldValue.SetInt(v)
 				case reflect.String:
 					fieldValue.SetString(jvaluedata.(string))
+				case reflect.Struct:
+					readVector2(&fieldValue, jvaluedata)
 				default:
-					fmt.Println("Unknown type", typ)
+					fmt.Println("Unknown type", typ, "for", jvaluename, "at", typeName, "in", obj.name)
 				}
 			}
 		}
 		objects = append(objects, obj)
 	}
 
-	runGame(objects)
+	return objects
 }
 
-func runGame(objects []GameObject) {
+func readVector2(fieldValue *reflect.Value, jvaluedata interface{}) {
+	var vec2 Vector2
+	if fieldValue.Type() == reflect.TypeOf(vec2) {
+		var jv = jvaluedata.([]interface{})
+		v, err := jv[0].(json.Number).Float64()
+		if err != nil {
+			panic(err)
+		}
+		fieldValue.FieldByName("X").SetFloat(v)
+
+		v, err = jv[0].(json.Number).Float64()
+		if err != nil {
+			panic(err)
+		}
+		fieldValue.FieldByName("Y").SetFloat(v)
+	}
+}
+
+func runGame(game *GameApp) {
+	var objects = game.objects
+	for _, obj := range objects {
+		for _, comp := range obj.components {
+			(*comp).InternalInit(game)
+		}
+	}
+
 	for _, obj := range objects {
 		for _, comp := range obj.components {
 			(*comp).Start()
