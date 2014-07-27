@@ -41,9 +41,13 @@ func (c *Graphics) Init(width int, height int) {
 
 func (c *Graphics) Update() bool {
 	for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
-		switch ev.(type) {
+		switch e := ev.(type) {
 		case *sdl.QuitEvent:
 			return false
+		case *sdl.KeyboardEvent:
+			if e.Keysym.Sym == 27 { // escape
+				return false
+			}
 		}
 	}
 
