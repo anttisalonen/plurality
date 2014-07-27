@@ -1,4 +1,4 @@
-package main
+package plurality
 
 var ComponentNameMap = make(map[string]func() Componenter)
 

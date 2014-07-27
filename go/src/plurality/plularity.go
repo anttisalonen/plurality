@@ -1,4 +1,4 @@
-package main
+package plurality
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ type Vector2 struct {
 	Y float64
 }
 
-func main() {
+func Main() {
 	// OpenGL needs to be locked on this thread - see http://stackoverflow.com/questions/21010854/golang-fmt-println-causes-game-crash
 	runtime.LockOSThread()
 	if len(os.Args) < 2 {
