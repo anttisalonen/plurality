@@ -12,7 +12,6 @@ type RectangleComponent struct {
 	graphics *Graphics
 	vertexBuffer gl.Buffer
 	texcoordBuffer gl.Buffer
-	Position Vector2
 }
 
 func (c *RectangleComponent) Name() string {
@@ -50,7 +49,8 @@ func (c *RectangleComponent) Update() {
 	uLoc.Uniform1i(0)
 
 	uLoc = c.graphics.program.GetUniformLocation("uPosition")
-	uLoc.Uniform2f(float32(c.Position.X), float32(c.Position.Y))
+	var pos = c.GetTransform().Position
+	uLoc.Uniform2f(float32(pos.X), float32(pos.Y))
 
 	gl.DrawArrays(gl.TRIANGLES, 0, 3)
 	var err = gl.GetError()

@@ -81,6 +81,7 @@ func loadGame(jsonData map[string]interface{}) []GameObject {
 			comp := jcomp.(map[string]interface{})
 			typeName := comp["type"]
 			compInst := ComponentNameMap[typeName.(string)]()
+			compInst.SetObject(&obj)
 			obj.components = append(obj.components, &compInst)
 
 			for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
@@ -187,6 +188,8 @@ func outputInterfaceAndExit(filename string) {
 				str = "string"
 			case reflect.Bool:
 				str = "bool"
+			case reflect.Struct:
+				str = "Vector2"
 			default:
 				fmt.Println("Unknown type", t, "for", p.Name)
 			}

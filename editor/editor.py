@@ -119,17 +119,33 @@ class Editor(wx.Frame):
                 complayout = self.model.components[compname]
                 self.ComponentWidgets.append(wx.StaticText(self.panel, label=compname))
 
-                b = wx.Button(self.panel, label='delete')
-                b.Bind(wx.EVT_BUTTON, lambda event, compdata=(objname, compname): self.RemoveComponent(event, compdata))
-                self.ComponentWidgets.append(b)
+                if compname != 'TransformComponent':
+                    b = wx.Button(self.panel, label='Delete')
+                    b.Bind(wx.EVT_BUTTON, lambda event, compdata=(objname, compname): self.RemoveComponent(event, compdata))
+                    self.ComponentWidgets.append(b)
 
                 for vname, vtype in sorted(complayout['values'].items()):
                     self.ComponentWidgets.append(wx.StaticText(self.panel, label=vname))
-                    w = wx.TextCtrl(self.panel)
-                    w.SetValue(str(comp['values'][vname]))
-                    for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
-                        w.Bind(ev, lambda event, compdata=(objname,compname,vname,vtype,w): self.ComponentChanged(event, compdata))
-                    self.ComponentWidgets.append(w)
+                    if vtype == 'Vector2':
+                        widgets = list()
+
+                        for i in xrange(2):
+                            w = wx.TextCtrl(self.panel)
+                            w.SetValue(str(comp['values'][vname][i]))
+                            self.ComponentWidgets.append(w)
+                            widgets.append(w)
+
+                        for widget in widgets:
+                            for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
+                                widget.Bind(ev, lambda event,
+                                        compdata=(objname,compname,vname,vtype,widgets): self.ComponentChanged(event, compdata))
+
+                    else:
+                        w = wx.TextCtrl(self.panel)
+                        w.SetValue(str(comp['values'][vname]))
+                        for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
+                            w.Bind(ev, lambda event, compdata=(objname,compname,vname,vtype,w): self.ComponentChanged(event, compdata))
+                        self.ComponentWidgets.append(w)
 
         for widget in self.ComponentWidgets:
             self.rightbox.Add(widget, wx.EXPAND)
@@ -137,7 +153,10 @@ class Editor(wx.Frame):
 
     def ComponentChanged(self, e, compdata):
         objname, compname, vname, vtype, w = compdata
-        newVal = w.GetValue()
+        if isinstance(w, list): # Vector2
+            newVal = [widget.GetValue() for widget in w]
+        else:
+            newVal = w.GetValue()
         self.model.setComponentValue(objname, compname, vname, vtype, newVal)
 
     def RemoveComponent(self, e, compdata):
@@ -187,12 +206,14 @@ class Model(object):
             return 0
         elif valuetype == 'bool':
             return False
+        elif valuetype == 'Vector2':
+            return [0.0, 0.0]
 
     def addObject(self, objname):
         if objname and objname not in self.objects:
             obj = dict()
             obj['name'] = objname
-            obj['components'] = list()
+            obj['components'] = [{'type':'TransformComponent', 'values':{'Position':[0.0, 0.0]}}]
             self.objects[objname] = obj
             return True
         else:
@@ -206,6 +227,8 @@ class Model(object):
                 return int(val)
             elif t == 'bool':
                 return bool(val)
+            elif t == 'Vector2':
+                return [float(v) for v in newVal]
 
         obj = self.objects[objname]
         for c in obj['components']:

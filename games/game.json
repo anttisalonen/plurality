@@ -5,14 +5,23 @@
             "components": [
                 {
                     "values": {
-                        "NumGreets": 3, 
-                        "Greetee": "welt"
+                        "Position": [
+                            0.0, 
+                            0.0
+                        ]
                     }, 
-                    "type": "HelloComponent"
+                    "type": "TransformComponent"
                 }, 
                 {
-                    "type": "CameraComponent",
-		    "values": {}
+                    "type": "HelloComponent", 
+                    "values": {
+                        "NumGreets": 3, 
+                        "Greetee": "welt"
+                    }
+                }, 
+                {
+                    "values": {}, 
+                    "type": "CameraComponent"
                 }
             ]
         }, 
@@ -20,10 +29,31 @@
             "name": "abc", 
             "components": [
                 {
-                    "type": "RectangleComponent", 
                     "values": {
-			    "Position": [0.3, -0.3]
-		    }
+                        "Position": [
+                            0.3, 
+                            -0.3
+                        ]
+                    }, 
+                    "type": "TransformComponent"
+                }, 
+                {
+                    "values": {}, 
+                    "type": "RectangleComponent"
+                }
+            ]
+        }, 
+        {
+            "name": "foo", 
+            "components": [
+                {
+                    "values": {
+                        "Position": [
+                            0.0, 
+                            0.0
+                        ]
+                    }, 
+                    "type": "TransformComponent"
                 }
             ]
         }
