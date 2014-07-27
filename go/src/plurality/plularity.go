@@ -122,7 +122,7 @@ func readVector2(fieldValue *reflect.Value, jvaluedata interface{}) {
 		}
 		fieldValue.FieldByName("X").SetFloat(v)
 
-		v, err = jv[0].(json.Number).Float64()
+		v, err = jv[1].(json.Number).Float64()
 		if err != nil {
 			panic(err)
 		}
@@ -144,7 +144,7 @@ func runGame(game *GameApp) {
 		}
 	}
 
-	for i := 0; i < 50; i++ {
+	for {
 		for _, obj := range objects {
 			for _, comp := range obj.components {
 				(*comp).PreUpdate()

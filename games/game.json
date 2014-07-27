@@ -1,7 +1,7 @@
 {
     "objects": [
         {
-            "name": "object1", 
+            "name": "Ball", 
             "components": [
                 {
                     "values": {
@@ -13,11 +13,27 @@
                     "type": "TransformComponent"
                 }, 
                 {
-                    "type": "HelloComponent", 
                     "values": {
-                        "NumGreets": 3, 
-                        "Greetee": "welt"
-                    }
+                        "Scale": [
+                            0.05, 
+                            0.05
+                        ]
+                    }, 
+                    "type": "RectangleComponent"
+                }
+            ]
+        }, 
+        {
+            "name": "Camera", 
+            "components": [
+                {
+                    "values": {
+                        "Position": [
+                            0.0, 
+                            0.0
+                        ]
+                    }, 
+                    "type": "TransformComponent"
                 }, 
                 {
                     "values": {}, 
@@ -26,34 +42,48 @@
             ]
         }, 
         {
-            "name": "abc", 
+            "name": "Paddle2", 
             "components": [
                 {
                     "values": {
                         "Position": [
-                            0.3, 
-                            -0.3
+                            0.5, 
+                            0.0
                         ]
                     }, 
                     "type": "TransformComponent"
                 }, 
                 {
-                    "values": {}, 
+                    "values": {
+                        "Scale": [
+                            0.1, 
+                            0.5
+                        ]
+                    }, 
                     "type": "RectangleComponent"
                 }
             ]
         }, 
         {
-            "name": "foo", 
+            "name": "Paddle1", 
             "components": [
                 {
                     "values": {
                         "Position": [
-                            0.0, 
+                            -0.5, 
                             0.0
                         ]
                     }, 
                     "type": "TransformComponent"
+                }, 
+                {
+                    "values": {
+                        "Scale": [
+                            0.1, 
+                            0.5
+                        ]
+                    }, 
+                    "type": "RectangleComponent"
                 }
             ]
         }

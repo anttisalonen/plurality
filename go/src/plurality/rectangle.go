@@ -12,6 +12,7 @@ type RectangleComponent struct {
 	graphics *Graphics
 	vertexBuffer gl.Buffer
 	texcoordBuffer gl.Buffer
+	Scale Vector2
 }
 
 func (c *RectangleComponent) Name() string {
@@ -25,7 +26,11 @@ func (c *RectangleComponent) InternalInit(game *GameApp) {
 func (c *RectangleComponent) Start() {
 	c.vertexBuffer = gl.GenBuffer()
 	c.vertexBuffer.Bind(gl.ARRAY_BUFFER)
-	var vertexBufferData = []float32{0.0, 0.5, 0.0,   -0.5, -0.5, 0.0,   0.5, -0.5, 0.0}
+	var vertexBufferData = []float32{
+		-0.5 * float32(c.Scale.X), -0.5 * float32(c.Scale.Y), 0.0,
+		-0.5 * float32(c.Scale.X),  0.5 * float32(c.Scale.Y), 0.0,
+		 0.5 * float32(c.Scale.X),  0.5 * float32(c.Scale.Y), 0.0,
+		 0.5 * float32(c.Scale.X), -0.5 * float32(c.Scale.Y), 0.0}
 	gl.BufferData(gl.ARRAY_BUFFER, len(vertexBufferData) * 4, vertexBufferData, gl.STATIC_DRAW)
 
 	c.texcoordBuffer = gl.GenBuffer()
@@ -52,7 +57,7 @@ func (c *RectangleComponent) Update() {
 	var pos = c.GetTransform().Position
 	uLoc.Uniform2f(float32(pos.X), float32(pos.Y))
 
-	gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	gl.DrawArrays(gl.TRIANGLE_FAN, 0, 4)
 	var err = gl.GetError()
 	if err != 0 {
 		fmt.Println("GL error", err)
