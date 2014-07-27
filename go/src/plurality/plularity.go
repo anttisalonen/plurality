@@ -162,6 +162,11 @@ func runGame(game *GameApp) {
 				(*comp).PostUpdate()
 			}
 		}
+
+		var running = game.graphics.Update()
+		if !running {
+			break
+		}
 	}
 }
 

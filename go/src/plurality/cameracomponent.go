@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"github.com/banthar/Go-SDL/sdl"
 	"github.com/go-gl/gl"
 )
 
@@ -69,12 +68,6 @@ func (c *CameraComponent) PreUpdate() {
 	uLoc = c.graphics.program.GetUniformLocation("uRight")
 	uLoc.Uniform1f(1.0 * zoom)
 
-}
-
-func (c *CameraComponent) PostUpdate() {
-	// TODO: this should actually be done by the graphics part,
-	// not by each camera
-	sdl.GL_SwapBuffers()
 }
 
 func init() {

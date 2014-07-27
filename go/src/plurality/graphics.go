@@ -39,4 +39,14 @@ func (c *Graphics) Init(width int, height int) {
 	c.program.Use()
 }
 
+func (c *Graphics) Update() bool {
+	for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+		switch ev.(type) {
+		case *sdl.QuitEvent:
+			return false
+		}
+	}
 
+	sdl.GL_SwapBuffers()
+	return true
+}
