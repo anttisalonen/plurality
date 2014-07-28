@@ -8,7 +8,6 @@ var paddle1ComponentName string = "Paddle1Component"
 
 type Paddle1Component struct {
 	plurality.Component
-	Position plurality.Vector2
 	Speed float64
 }
 

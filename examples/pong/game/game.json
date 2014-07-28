@@ -4,22 +4,22 @@
             "name": "Ball", 
             "components": [
                 {
+                    "type": "TransformComponent", 
                     "values": {
                         "Position": [
                             0.0, 
                             0.0
                         ]
-                    }, 
-                    "type": "TransformComponent"
+                    }
                 }, 
                 {
+                    "type": "RectangleComponent", 
                     "values": {
                         "Scale": [
-                            0.05, 
-                            0.05
+                            10.0, 
+                            10.0
                         ]
-                    }, 
-                    "type": "RectangleComponent"
+                    }
                 }
             ]
         }, 
@@ -27,17 +27,17 @@
             "name": "Camera", 
             "components": [
                 {
+                    "type": "TransformComponent", 
                     "values": {
                         "Position": [
                             0.0, 
                             0.0
                         ]
-                    }, 
-                    "type": "TransformComponent"
+                    }
                 }, 
                 {
-                    "values": {}, 
-                    "type": "CameraComponent"
+                    "type": "CameraComponent", 
+                    "values": {}
                 }
             ]
         }, 
@@ -45,22 +45,22 @@
             "name": "Paddle2", 
             "components": [
                 {
+                    "type": "TransformComponent", 
                     "values": {
                         "Position": [
-                            0.5, 
+                            350.0, 
                             0.0
                         ]
-                    }, 
-                    "type": "TransformComponent"
+                    }
                 }, 
                 {
+                    "type": "RectangleComponent", 
                     "values": {
                         "Scale": [
-                            0.1, 
-                            0.5
+                            20.0, 
+                            100.0
                         ]
-                    }, 
-                    "type": "RectangleComponent"
+                    }
                 }
             ]
         }, 
@@ -68,32 +68,28 @@
             "name": "Paddle1", 
             "components": [
                 {
+                    "type": "TransformComponent", 
                     "values": {
                         "Position": [
-                            -0.5, 
+                            -350.0, 
                             0.0
                         ]
-                    }, 
-                    "type": "TransformComponent"
+                    }
                 }, 
                 {
+                    "type": "RectangleComponent", 
                     "values": {
                         "Scale": [
-                            0.1, 
-                            0.5
+                            20.0, 
+                            100.0
                         ]
-                    }, 
-                    "type": "RectangleComponent"
+                    }
                 }, 
                 {
-                    "type": "Paddle1Component", 
                     "values": {
-                        "Position": [
-                            0.0, 
-                            0.0
-                        ], 
-                        "Speed": 1.0
-                    }
+                        "Speed": 200.0
+                    }, 
+                    "type": "Paddle1Component"
                 }
             ]
         }
