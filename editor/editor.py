@@ -131,7 +131,14 @@ class Editor(wx.Frame):
 
                         for i in xrange(2):
                             w = wx.TextCtrl(self.panel)
-                            w.SetValue(str(comp['values'][vname][i]))
+                            values = comp['values']
+                            try:
+                                vals = values[vname]
+                            except KeyError: # inteface changed (new public variable)
+                                values[vname] = self.model.getDefault(vtype)
+                                vals = values[vname]
+                            val = vals[i]
+                            w.SetValue(str(val))
                             self.ComponentWidgets.append(w)
                             widgets.append(w)
 
@@ -146,8 +153,8 @@ class Editor(wx.Frame):
                         try:
                             val = values[vname]
                         except KeyError: # interface changed (new public variable)
-                            val = self.model.getDefault(vtype)
-                            values[vname] = val
+                            values[vname] = self.model.getDefault(vtype)
+                            val = values[vname]
                         w.SetValue(str(val))
                         for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
                             w.Bind(ev, lambda event, compdata=(objname,compname,vname,vtype,w): self.ComponentChanged(event, compdata))

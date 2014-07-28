@@ -24,7 +24,8 @@ func (c *CameraComponent) PreUpdate() {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
 	var uLoc = c.graphics.program.GetUniformLocation("uCamera")
-	uLoc.Uniform2f(0.0, 0.0)
+	var pos = c.GetTransform().Position
+	uLoc.Uniform2f(float32(pos.X), float32(pos.Y))
 
 	var zoom float32 = 1.0
 
