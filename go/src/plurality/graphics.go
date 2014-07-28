@@ -9,8 +9,8 @@ import (
 
 type Graphics struct {
 	program gl.Program
-	screenWidth int
-	screenHeight int
+	ScreenWidth int
+	ScreenHeight int
 }
 
 func loadShader(typ gl.GLenum, sourcefilename string) gl.Shader {
@@ -48,8 +48,8 @@ func initShader() gl.Program {
 
 func (c *Graphics) Init(width int, height int) {
 	sdl.Init(sdl.INIT_EVERYTHING)
-	c.screenWidth = width
-	c.screenHeight = height
+	c.ScreenWidth = width
+	c.ScreenHeight = height
 	screen := sdl.SetVideoMode(width, height, 32, sdl.OPENGL)
 
 	if screen == nil {

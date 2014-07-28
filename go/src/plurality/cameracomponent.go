@@ -20,7 +20,7 @@ func (c *CameraComponent) InternalInit(game *GameApp) {
 }
 
 func (c *CameraComponent) PreUpdate() {
-	gl.Viewport(0, 0, c.graphics.screenWidth, c.graphics.screenHeight)
+	gl.Viewport(0, 0, c.graphics.ScreenWidth, c.graphics.ScreenHeight)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
 	var uLoc = c.graphics.program.GetUniformLocation("uCamera")
@@ -30,10 +30,10 @@ func (c *CameraComponent) PreUpdate() {
 	var zoom float32 = 1.0
 
 	uLoc = c.graphics.program.GetUniformLocation("uRight")
-	uLoc.Uniform1f(float32(c.graphics.screenWidth) * zoom * 0.5)
+	uLoc.Uniform1f(float32(c.graphics.ScreenWidth) * zoom * 0.5)
 
 	uLoc = c.graphics.program.GetUniformLocation("uTop")
-	uLoc.Uniform1f(float32(c.graphics.screenHeight) * zoom * 0.5)
+	uLoc.Uniform1f(float32(c.graphics.ScreenHeight) * zoom * 0.5)
 
 }
 

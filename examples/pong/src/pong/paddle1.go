@@ -2,6 +2,7 @@ package main
 
 import (
 	"plurality"
+	"math"
 )
 
 var paddle1ComponentName string = "Paddle1Component"
@@ -15,6 +16,15 @@ func (c *Paddle1Component) Name() string {
 	return paddle1ComponentName
 }
 
+func clamp(t, mn, mx float64) float64 {
+	return math.Max(mn, math.Min(t, mx))
+}
+
+func clampPos(posy, scaley float64, screenheight int) float64 {
+	return clamp(posy, float64(-screenheight) * 0.5 + scaley * 0.5,
+	float64(screenheight) * 0.5 - scaley * 0.5)
+}
+
 func (c *Paddle1Component) Start() {
 }
 
@@ -23,6 +33,9 @@ func (c *Paddle1Component) Update() {
 	if inp != 0.0 {
 		c.GetTransform().Position.Y += inp * c.Time.GetDeltaTime() * c.Speed
 	}
+
+	var scale = c.Object.GetComponent("RectangleComponent").(*plurality.RectangleComponent).Scale
+	c.GetTransform().Position.Y = clampPos(c.GetTransform().Position.Y, scale.Y, c.Graphics.ScreenHeight)
 }
 
 func init() {

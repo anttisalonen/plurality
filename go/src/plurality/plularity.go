@@ -18,8 +18,26 @@ type GameObject struct {
 	components []*Componenter
 }
 
+func (g *GameObject) GetComponent(comptype string) Componenter {
+	for _, c := range g.components {
+		if (*c).Name() == comptype {
+			return *c
+		}
+	}
+	return nil
+}
+
+func (o *GameObject) GetTransform() *TransformComponent {
+	var t = o.components[0]
+	if (*t).Name() != "TransformComponent" {
+		panic("First component must be transform, but it is " + (*t).Name())
+	}
+	var tt = *t
+	return tt.(*TransformComponent)
+}
+
 type GameApp struct {
-	objects []GameObject
+	objMap map[string]GameObject
 	graphics Graphics
 	input Input
 	time Time
@@ -30,11 +48,19 @@ type Vector2 struct {
 	Y float64
 }
 
+func (v Vector2) Add(v2 Vector2) Vector2 {
+	return Vector2{v.X + v2.X, v.Y + v2.Y}
+}
+
+func (v Vector2) Multiplied(a float64) Vector2 {
+	return Vector2{v.X * a, v.Y * a}
+}
+
 func Main() {
 	// OpenGL needs to be locked on this thread - see http://stackoverflow.com/questions/21010854/golang-fmt-println-causes-game-crash
 	runtime.LockOSThread()
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: %s <game JSON file>", os.Args[0])
+		fmt.Printf("Usage: %s <game JSON file>\n", os.Args[0])
 		os.Exit(1)
 	}
 
@@ -69,7 +95,12 @@ func (game *GameApp) Prepare() {
 }
 
 func (game *GameApp) Run(jsonData map[string]interface{}) {
-	game.objects = loadGame(game, jsonData)
+	var objects = loadGame(game, jsonData)
+	game.objMap = make(map[string]GameObject)
+	for _, obj := range objects {
+		var on = obj.name
+		game.objMap[on] = obj
+	}
 	runGame(game)
 }
 
@@ -86,8 +117,7 @@ func loadGame(game* GameApp, jsonData map[string]interface{}) []GameObject {
 			typeName := comp["type"]
 			compInst := ComponentNameMap[typeName.(string)]()
 			compInst.SetObject(&obj)
-			compInst.SetInput(&game.input)
-			compInst.SetTime(&game.time)
+			compInst.SetGame(game)
 			obj.components = append(obj.components, &compInst)
 
 			for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
@@ -143,7 +173,7 @@ func readVector2(fieldValue *reflect.Value, jvaluedata interface{}) {
 }
 
 func runGame(game *GameApp) {
-	var objects = game.objects
+	var objects = game.objMap
 	for _, obj := range objects {
 		for _, comp := range obj.components {
 			(*comp).InternalInit(game)
