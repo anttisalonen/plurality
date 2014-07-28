@@ -142,7 +142,13 @@ class Editor(wx.Frame):
 
                     else:
                         w = wx.TextCtrl(self.panel)
-                        w.SetValue(str(comp['values'][vname]))
+                        values = comp['values']
+                        try:
+                            val = values[vname]
+                        except KeyError: # interface changed (new public variable)
+                            val = self.model.getDefault(vtype)
+                            values[vname] = val
+                        w.SetValue(str(val))
                         for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
                             w.Bind(ev, lambda event, compdata=(objname,compname,vname,vtype,w): self.ComponentChanged(event, compdata))
                         self.ComponentWidgets.append(w)
@@ -206,6 +212,8 @@ class Model(object):
             return 0
         elif valuetype == 'bool':
             return False
+        elif valuetype == 'float64':
+            return 0.0
         elif valuetype == 'Vector2':
             return [0.0, 0.0]
 
@@ -227,6 +235,8 @@ class Model(object):
                 return int(val)
             elif t == 'bool':
                 return bool(val)
+            elif t == 'float64':
+                return float(val)
             elif t == 'Vector2':
                 return [float(v) for v in newVal]
 

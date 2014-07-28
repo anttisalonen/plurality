@@ -84,6 +84,16 @@
                         ]
                     }, 
                     "type": "RectangleComponent"
+                }, 
+                {
+                    "type": "Paddle1Component", 
+                    "values": {
+                        "Position": [
+                            0.0, 
+                            0.0
+                        ], 
+                        "Speed": 1.0
+                    }
                 }
             ]
         }

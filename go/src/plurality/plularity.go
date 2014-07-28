@@ -21,6 +21,8 @@ type GameObject struct {
 type GameApp struct {
 	objects []GameObject
 	graphics Graphics
+	input Input
+	time Time
 }
 
 type Vector2 struct {
@@ -62,14 +64,16 @@ func Main() {
 
 func (game *GameApp) Prepare() {
 	game.graphics.Init(800, 600)
+	game.input.Init()
+	game.time.Init()
 }
 
 func (game *GameApp) Run(jsonData map[string]interface{}) {
-	game.objects = loadGame(jsonData)
+	game.objects = loadGame(game, jsonData)
 	runGame(game)
 }
 
-func loadGame(jsonData map[string]interface{}) []GameObject {
+func loadGame(game* GameApp, jsonData map[string]interface{}) []GameObject {
 	var objects = []GameObject{}
 	objs := jsonData["objects"].([]interface{})
 	for _, jobj := range objs {
@@ -82,6 +86,8 @@ func loadGame(jsonData map[string]interface{}) []GameObject {
 			typeName := comp["type"]
 			compInst := ComponentNameMap[typeName.(string)]()
 			compInst.SetObject(&obj)
+			compInst.SetInput(&game.input)
+			compInst.SetTime(&game.time)
 			obj.components = append(obj.components, &compInst)
 
 			for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
@@ -91,6 +97,12 @@ func loadGame(jsonData map[string]interface{}) []GameObject {
 				switch typ {
 				case reflect.Bool:
 					fieldValue.SetBool(jvaluedata.(bool))
+				case reflect.Float64:
+					v, err := jvaluedata.(json.Number).Float64()
+					if err != nil {
+						fmt.Println("Error on field %s: %s", jvaluename, err)
+					}
+					fieldValue.SetFloat(v)
 				case reflect.Int:
 					v, err := jvaluedata.(json.Number).Int64()
 					if err != nil {
@@ -163,7 +175,13 @@ func runGame(game *GameApp) {
 			}
 		}
 
-		var running = game.graphics.Update()
+		game.graphics.Update()
+		var running = game.input.Update()
+		if !running {
+			break
+		}
+
+		running = game.time.Update()
 		if !running {
 			break
 		}
@@ -193,6 +211,8 @@ func outputInterfaceAndExit(filename string) {
 				str = "string"
 			case reflect.Bool:
 				str = "bool"
+			case reflect.Float64:
+				str = "float64"
 			case reflect.Struct:
 				str = "Vector2"
 			default:

@@ -1,7 +1,6 @@
 package plurality
 
 import (
-	"io/ioutil"
 	"github.com/go-gl/gl"
 )
 
@@ -18,39 +17,6 @@ func (c *CameraComponent) Name() string {
 
 func (c *CameraComponent) InternalInit(game *GameApp) {
 	c.graphics = &game.graphics
-}
-
-func loadShader(typ gl.GLenum, sourcefilename string) gl.Shader {
-	source, err := ioutil.ReadFile(sourcefilename)
-	if err != nil {
-		panic(err)
-	}
-
-	var shader = gl.CreateShader(typ)
-	shader.Source(string(source))
-	shader.Compile()
-	var compiled = shader.Get(gl.COMPILE_STATUS)
-	if compiled == 0 {
-		panic("Shader compilation: " + shader.GetInfoLog())
-	}
-	return shader
-}
-
-func initShader() gl.Program {
-	var vs = loadShader(gl.VERTEX_SHADER, "../share/shader.vert")
-	var fs = loadShader(gl.FRAGMENT_SHADER, "../share/shader.frag")
-	var prog = gl.CreateProgram()
-	prog.AttachShader(vs)
-	prog.AttachShader(fs)
-	prog.BindAttribLocation(0, "aPosition")
-	prog.BindAttribLocation(1, "aTexcoord")
-	prog.Link()
-	var linked = prog.Get(gl.LINK_STATUS)
-	if linked == 0 {
-		panic("Shader linking: " + prog.GetInfoLog())
-	}
-
-	return prog
 }
 
 func (c *CameraComponent) PreUpdate() {

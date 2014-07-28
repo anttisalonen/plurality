@@ -17,5 +17,5 @@ void main()
                 vec4(0.0, 1.0 / uTop, 0.0, 0.0),
                 vec4(0.0, 0.0, 1.0, 0.0),
                 vec4(0.0, 0.0, 0.0, 1.0));
-        gl_Position = window_scale * (aPosition + vec4(uCamera, 0.0, 0.0) - vec4(uPosition, 0.0, 0.0));
+        gl_Position = window_scale * (aPosition - vec4(uCamera, 0.0, 0.0) + vec4(uPosition, 0.0, 0.0));
 }

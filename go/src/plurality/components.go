@@ -4,6 +4,8 @@ var ComponentNameMap = make(map[string]func() Componenter)
 
 type Component struct {
 	obj *GameObject
+	Input *Input
+	Time *Time
 }
 
 func (c *Component) GetObject() *GameObject {
@@ -12,6 +14,14 @@ func (c *Component) GetObject() *GameObject {
 
 func (c *Component) SetObject(obj *GameObject) {
 	c.obj = obj
+}
+
+func (c *Component) SetInput(i *Input) {
+	c.Input = i
+}
+
+func (c *Component) SetTime(i *Time) {
+	c.Time = i
 }
 
 func (c *Component) InternalInit(game *GameApp) {
@@ -48,5 +58,7 @@ type Componenter interface {
 	Update()
 	GetObject() *GameObject
 	SetObject(obj *GameObject)
+	SetInput(i *Input)
+	SetTime(i *Time)
 }
 
