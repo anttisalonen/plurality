@@ -15,7 +15,7 @@ func (c *CameraComponent) Name() string {
 	return cameraComponentName
 }
 
-func (c *CameraComponent) InternalInit(game *GameApp) {
+func (c *CameraComponent) internalInit(game *GameApp) {
 	c.graphics = &game.graphics
 }
 

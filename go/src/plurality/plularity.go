@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"io/ioutil"
 	"runtime"
+	"strconv"
 )
 
 type Named interface {
@@ -15,13 +16,13 @@ type Named interface {
 
 type GameObject struct {
 	name string
-	components []*Componenter
+	components []Componenter
 }
 
 func (g *GameObject) GetComponent(comptype string) Componenter {
 	for _, c := range g.components {
-		if (*c).Name() == comptype {
-			return *c
+		if c.Name() == comptype {
+			return c
 		}
 	}
 	return nil
@@ -29,11 +30,11 @@ func (g *GameObject) GetComponent(comptype string) Componenter {
 
 func (o *GameObject) GetTransform() *TransformComponent {
 	var t = o.components[0]
-	if (*t).Name() != "TransformComponent" {
-		panic("First component must be transform, but it is " + (*t).Name())
+	if t.Name() != "TransformComponent" {
+		panic("First component must be transform, but it is " + t.Name())
 	}
-	var tt = *t
-	return tt.(*TransformComponent)
+	var tt = t.(*TransformComponent)
+	return tt
 }
 
 type GameApp struct {
@@ -41,6 +42,24 @@ type GameApp struct {
 	graphics Graphics
 	input Input
 	time Time
+	prefabMap map[string]interface{}
+	nextPrefabIndex int
+}
+
+func (g *GameApp) Instantiate(objtype string, pos Vector2) *GameObject {
+	var objinst = prefabToObject(g, g.prefabMap[objtype].(map[string]interface{}))
+
+	objinst.GetTransform().Position = pos
+	objinst.name = "__fab" + strconv.Itoa(g.nextPrefabIndex)
+	g.objMap[objinst.name] = objinst
+	g.nextPrefabIndex++
+
+	for _, comp := range objinst.components {
+		comp.SetObject(&objinst)
+		comp.internalInit(g)
+		comp.Start()
+	}
+	return &objinst
 }
 
 type Vector2 struct {
@@ -95,63 +114,87 @@ func (game *GameApp) Prepare() {
 }
 
 func (game *GameApp) Run(jsonData map[string]interface{}) {
-	var objects = loadGame(game, jsonData)
+	var objects, prefabMap = loadGame(game, jsonData)
 	game.objMap = make(map[string]GameObject)
 	for _, obj := range objects {
 		var on = obj.name
 		game.objMap[on] = obj
 	}
+
+	game.prefabMap = prefabMap
+
 	runGame(game)
 }
 
-func loadGame(game* GameApp, jsonData map[string]interface{}) []GameObject {
-	var objects = []GameObject{}
-	objs := jsonData["objects"].([]interface{})
+func loadGame(game* GameApp, jsonData map[string]interface{}) ([]GameObject, map[string]interface{}) {
+	var objs = loadObjects(game, jsonData["objects"].([]interface{}))
+	var prefabMap = loadPrefabs(jsonData["prefabs"].([]interface{}))
+	return objs, prefabMap
+}
+
+func loadPrefabs(objs []interface{}) map[string]interface{} {
+	var prefabMap = make(map[string]interface{})
 	for _, jobj := range objs {
 		objmap := jobj.(map[string]interface{})
-		var obj GameObject
-		obj.name = objmap["name"].(string)
-		components := objmap["components"].([]interface{})
-		for _, jcomp := range components {
-			comp := jcomp.(map[string]interface{})
-			typeName := comp["type"]
-			compInst := ComponentNameMap[typeName.(string)]()
-			compInst.SetObject(&obj)
-			compInst.SetGame(game)
-			obj.components = append(obj.components, &compInst)
+		var prefab GameObject
+		prefab.name = objmap["name"].(string)
+		prefabMap[objmap["name"].(string)] = objmap
+	}
+	return prefabMap
+}
 
-			for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
-				compValue := reflect.ValueOf(compInst).Elem()
-				fieldValue := compValue.FieldByName(jvaluename)
-				typ := fieldValue.Kind()
-				switch typ {
-				case reflect.Bool:
-					fieldValue.SetBool(jvaluedata.(bool))
-				case reflect.Float64:
-					v, err := jvaluedata.(json.Number).Float64()
-					if err != nil {
-						fmt.Println("Error on field %s: %s", jvaluename, err)
-					}
-					fieldValue.SetFloat(v)
-				case reflect.Int:
-					v, err := jvaluedata.(json.Number).Int64()
-					if err != nil {
-						fmt.Println("Error on field %s: %s", jvaluename, err)
-					}
-					fieldValue.SetInt(v)
-				case reflect.String:
-					fieldValue.SetString(jvaluedata.(string))
-				case reflect.Struct:
-					readVector2(&fieldValue, jvaluedata)
-				default:
-					fmt.Println("Unknown type", typ, "for", jvaluename, "at", typeName, "in", obj.name)
-				}
-			}
-		}
+func loadObjects(game* GameApp, objs []interface{}) []GameObject {
+	var objects = []GameObject{}
+	for _, jobj := range objs {
+		objmap := jobj.(map[string]interface{})
+		var obj = prefabToObject(game, objmap)
 		objects = append(objects, obj)
 	}
 
 	return objects
+}
+
+func prefabToObject(game *GameApp, objmap map[string]interface{}) GameObject {
+	var obj GameObject
+	obj.name = objmap["name"].(string)
+	components := objmap["components"].([]interface{})
+	for _, jcomp := range components {
+		comp := jcomp.(map[string]interface{})
+		typeName := comp["type"]
+		compInst := ComponentNameMap[typeName.(string)]()
+		compInst.SetObject(&obj)
+		compInst.SetGame(game)
+		obj.components = append(obj.components, compInst)
+
+		for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
+			compValue := reflect.ValueOf(compInst).Elem()
+			fieldValue := compValue.FieldByName(jvaluename)
+			typ := fieldValue.Kind()
+			switch typ {
+			case reflect.Bool:
+				fieldValue.SetBool(jvaluedata.(bool))
+			case reflect.Float64:
+				v, err := jvaluedata.(json.Number).Float64()
+				if err != nil {
+					fmt.Println("Error on field %s: %s", jvaluename, err)
+				}
+				fieldValue.SetFloat(v)
+			case reflect.Int:
+				v, err := jvaluedata.(json.Number).Int64()
+				if err != nil {
+					fmt.Println("Error on field %s: %s", jvaluename, err)
+				}
+				fieldValue.SetInt(v)
+			case reflect.String:
+				fieldValue.SetString(jvaluedata.(string))
+			case reflect.Struct:
+				readVector2(&fieldValue, jvaluedata)
+			default:
+				fmt.Println("Unknown type", typ, "for", jvaluename, "at", typeName, "in", obj.name)
+			}
+		}
+	}
+	return obj
 }
 
 func readVector2(fieldValue *reflect.Value, jvaluedata interface{}) {
@@ -176,32 +219,32 @@ func runGame(game *GameApp) {
 	var objects = game.objMap
 	for _, obj := range objects {
 		for _, comp := range obj.components {
-			(*comp).InternalInit(game)
+			comp.internalInit(game)
 		}
 	}
 
 	for _, obj := range objects {
 		for _, comp := range obj.components {
-			(*comp).Start()
+			comp.Start()
 		}
 	}
 
 	for {
 		for _, obj := range objects {
 			for _, comp := range obj.components {
-				(*comp).PreUpdate()
+				comp.PreUpdate()
 			}
 		}
 
 		for _, obj := range objects {
 			for _, comp := range obj.components {
-				(*comp).Update()
+				comp.Update()
 			}
 		}
 
 		for _, obj := range objects {
 			for _, comp := range obj.components {
-				(*comp).PostUpdate()
+				comp.PostUpdate()
 			}
 		}
 

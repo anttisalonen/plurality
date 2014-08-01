@@ -26,7 +26,11 @@ func (c *Component) SetGame(g *GameApp) {
 	c.Time = &g.time
 }
 
-func (c *Component) InternalInit(game *GameApp) {
+func (c *Component) Instantiate(objtype string, pos Vector2) *GameObject {
+	return c.gameApp.Instantiate(objtype, pos)
+}
+
+func (c *Component) internalInit(game *GameApp) {
 }
 
 func (c *Component) Start() {
@@ -48,7 +52,7 @@ func (c *Component) GetTransform() *TransformComponent {
 type Componenter interface {
 	Named
 	GetTransform() *TransformComponent
-	InternalInit(game *GameApp)
+	internalInit(game *GameApp)
 	Start()
 	PreUpdate()
 	PostUpdate()

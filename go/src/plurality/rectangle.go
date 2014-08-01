@@ -19,7 +19,7 @@ func (c *RectangleComponent) Name() string {
 	return rectangleComponentName
 }
 
-func (c *RectangleComponent) InternalInit(game *GameApp) {
+func (c *RectangleComponent) internalInit(game *GameApp) {
 	c.graphics = &game.graphics
 }
 
