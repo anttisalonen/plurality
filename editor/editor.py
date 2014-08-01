@@ -2,7 +2,12 @@
 
 import sys
 import json
+import copy
 import wx
+
+class ObjectType(object):
+    GameObject = 0
+    Prefab = 1
 
 class Editor(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -11,6 +16,7 @@ class Editor(wx.Frame):
         super(Editor, self).__init__(*args, **kwargs) 
         self.ComponentWidgets = list()
         self.selectedObject = None
+        self.selectedObjectType = None
         menubar = wx.MenuBar()
         fileMenu = wx.Menu()
         saveItem = fileMenu.Append(wx.ID_SAVE, 'Save', 'Save')
@@ -50,6 +56,10 @@ class Editor(wx.Frame):
         self.removeObjButton.Bind(wx.EVT_BUTTON, self.OnRemoveObject)
         self.leftbox.Add(self.removeObjButton)
 
+        self.createPrefabButton = wx.Button(self.panel, label='Create prefab')
+        self.createPrefabButton.Bind(wx.EVT_BUTTON, self.OnCreatePrefab)
+        self.leftbox.Add(self.createPrefabButton)
+
         self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
         self.leftbox.Add(self.compTypeCtrl)
         self.compTypeCtrl.SetSelection(0)
@@ -63,12 +73,31 @@ class Editor(wx.Frame):
     def OnActiveTree(self, e):
         tid = self.tree.GetSelection()
         objname = self.tree.GetItemText(tid)
+
+        par = self.tree.GetItemParent(tid)
+        if not par:
+            self.postActiveTree()
+            return
+
+        ot = self.tree.GetItemText(par)
+        if ot == "Objects":
+            self.selectedObjectType = ObjectType.GameObject
+        elif ot == "Prefabs":
+            self.selectedObjectType = ObjectType.Prefab
+        else: # root
+            self.postActiveTree()
+            return
+
         try:
-            self.selectedObject = self.model.objects[objname]
+            self.selectedObject = self.model.getObject(objname, self.selectedObjectType)
         except KeyError:
             self.selectedObject = None
+            self.selectedObjectType = None
         finally:
-            self.updateComponentView()
+            self.postActiveTree()
+
+    def postActiveTree(self):
+        self.updateComponentView()
 
     def OnNewComponent(self, e):
         self.addComponent(self.compTypeCtrl.GetValue())
@@ -79,7 +108,7 @@ class Editor(wx.Frame):
             self.addObject(self.newObjCtrl.GetValue())
 
     def addComponent(self, comptype):
-        if self.model.addComponent(self.selectedObject['name'], comptype):
+        if self.model.addComponent(self.selectedObject['name'], self.selectedObjectType, comptype):
             self.updateComponentView()
 
     def addObject(self, objname):
@@ -99,9 +128,13 @@ class Editor(wx.Frame):
 
     def updateTreeView(self):
         self.tree.DeleteAllItems()
-        self.treeRoot = self.tree.AddRoot("Objects")
+        self.treeRoot = self.tree.AddRoot("Game")
+        objects = self.tree.AppendItem(self.treeRoot, "Objects")
         for objname, obj in sorted(self.model.objects.items()):
-            tid = self.tree.AppendItem(self.treeRoot, objname)
+            tid = self.tree.AppendItem(objects, objname)
+        prefabs = self.tree.AppendItem(self.treeRoot, "Prefabs")
+        for objname, obj in sorted(self.model.prefabs.items()):
+            tid = self.tree.AppendItem(prefabs, objname)
         self.tree.ExpandAll()
 
     def updateComponentView(self):
@@ -121,7 +154,7 @@ class Editor(wx.Frame):
 
                 if compname != 'TransformComponent':
                     b = wx.Button(self.panel, label='Delete')
-                    b.Bind(wx.EVT_BUTTON, lambda event, compdata=(objname, compname): self.RemoveComponent(event, compdata))
+                    b.Bind(wx.EVT_BUTTON, lambda event, compdata=compname: self.RemoveComponent(event, compdata))
                     self.ComponentWidgets.append(b)
 
                 for vname, vtype in sorted(complayout['values'].items()):
@@ -145,7 +178,7 @@ class Editor(wx.Frame):
                         for widget in widgets:
                             for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
                                 widget.Bind(ev, lambda event,
-                                        compdata=(objname,compname,vname,vtype,widgets): self.ComponentChanged(event, compdata))
+                                        compdata=(compname,vname,vtype,widgets): self.ComponentChanged(event, compdata))
 
                     else:
                         w = wx.TextCtrl(self.panel)
@@ -157,7 +190,7 @@ class Editor(wx.Frame):
                             val = values[vname]
                         w.SetValue(str(val))
                         for ev in [wx.EVT_KEY_UP, wx.EVT_KILL_FOCUS]:
-                            w.Bind(ev, lambda event, compdata=(objname,compname,vname,vtype,w): self.ComponentChanged(event, compdata))
+                            w.Bind(ev, lambda event, compdata=(compname,vname,vtype,w): self.ComponentChanged(event, compdata))
                         self.ComponentWidgets.append(w)
 
         for widget in self.ComponentWidgets:
@@ -165,21 +198,27 @@ class Editor(wx.Frame):
         self.panel.SetSizerAndFit(self.mainbox)
 
     def ComponentChanged(self, e, compdata):
-        objname, compname, vname, vtype, w = compdata
+        compname, vname, vtype, w = compdata
         if isinstance(w, list): # Vector2
             newVal = [widget.GetValue() for widget in w]
         else:
             newVal = w.GetValue()
-        self.model.setComponentValue(objname, compname, vname, vtype, newVal)
+        self.model.setComponentValue(self.selectedObject['name'], self.selectedObjectType, compname, vname, vtype, newVal)
 
     def RemoveComponent(self, e, compdata):
-        objname, compname = compdata
-        self.model.removeComponent(objname, compname)
+        compname = compdata
+        self.model.removeComponent(self.selectedObject['name'], self.selectedObjectType, compname)
         self.updateComponentView()
 
     def OnRemoveObject(self, e):
         if self.selectedObject:
-            self.model.removeObject(self.selectedObject['name'])
+            self.model.removeObject(self.selectedObject['name'], self.selectedObjectType)
+            self.selectedObject = None
+            self.updateGUI()
+
+    def OnCreatePrefab(self, e):
+        if self.selectedObject:
+            self.model.createPrefab(self.selectedObject['name'])
             self.selectedObject = None
             self.updateGUI()
 
@@ -193,11 +232,15 @@ class Model(object):
         for o in gamedata['objects']:
             self.objects[o['name']] = o
 
+        self.prefabs = dict()
+        for o in gamedata.get('prefabs', dict()):
+            self.prefabs[o['name']] = o
+
     def getAvailableComponentTypes(self):
         return [c['name'] for c in self.components.values()]
 
-    def addComponent(self, objname, comptype):
-        obj = self.objects[objname]
+    def addComponent(self, objname, objtype, comptype):
+        obj = self._getObjectOnType(objname, objtype)
 
         for c in obj['components']:
             if c['type'] == comptype:
@@ -234,7 +277,16 @@ class Model(object):
         else:
             return False
 
-    def setComponentValue(self, objname, comptype, vname, vtype, newVal):
+    def _getObjectOnType(self, objname, objtype):
+        if objtype == ObjectType.GameObject:
+            return self.objects[objname]
+        else:
+            return self.prefabs[objname]
+
+    def getObject(self, objname, objtype):
+        return self._getObjectOnType(objname, objtype)
+
+    def setComponentValue(self, objname, objtype, comptype, vname, vtype, newVal):
         def convert(val, t):
             if t == 'string':
                 return val
@@ -247,7 +299,8 @@ class Model(object):
             elif t == 'Vector2':
                 return [float(v) for v in newVal]
 
-        obj = self.objects[objname]
+        obj = self._getObjectOnType(objname, objtype)
+
         for c in obj['components']:
             if c['type'] == comptype:
                 assert vname in c['values']
@@ -255,16 +308,23 @@ class Model(object):
                 return
         assert False, 'Component %s not found in object %s' % (comptype, objname)
 
-    def removeComponent(self, objname, comptype):
-        obj = self.objects[objname]
+    def removeComponent(self, objname, objtype, comptype):
+        obj = self._getObjectOnType(objname, objtype)
         obj['components'] = [c for c in obj['components'] if c['type'] != comptype]
 
-    def removeObject(self, objname):
-        del self.objects[objname]
+    def removeObject(self, objname, objtype):
+        if objtype == ObjectType.GameObject:
+            del self.objects[objname]
+        else:
+            del self.prefabs[objname]
+
+    def createPrefab(self, objname):
+        self.prefabs[objname] = copy.deepcopy(self.objects[objname])
 
     def save(self):
         game = dict()
         game['objects'] = self.objects.values()
+        game['prefabs'] = self.prefabs.values()
         with open(self.gamefilename, 'w') as f:
             f.write(json.dumps(game, indent=4))
 
