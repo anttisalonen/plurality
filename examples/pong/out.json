@@ -1,0 +1,45 @@
+{
+    "components": [
+        {
+            "name": "paddle2",
+            "values": {
+                "Speed": "float64"
+            }
+        },
+        {
+            "name": "CameraComponent",
+            "values": {}
+        },
+        {
+            "name": "HelloComponent",
+            "values": {
+                "Greetee": "string",
+                "NumGreets": "int"
+            }
+        },
+        {
+            "name": "RectangleComponent",
+            "values": {
+                "Scale": "Vector2"
+            }
+        },
+        {
+            "name": "TransformComponent",
+            "values": {
+                "Position": "Vector2"
+            }
+        },
+        {
+            "name": "ball",
+            "values": {
+                "Speed": "float64"
+            }
+        },
+        {
+            "name": "paddle1",
+            "values": {
+                "Speed": "float64"
+            }
+        }
+    ]
+}

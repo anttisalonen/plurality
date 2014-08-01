@@ -4,25 +4,25 @@ import (
 	"plurality"
 )
 
-var paddle2ComponentName string = "Paddle2Component"
+var paddle2ComponentName string = "paddle2"
 
 func init() {
-	plurality.ComponentNameMap[paddle2ComponentName] = func() plurality.Componenter { return &Paddle2Component{} }
+	plurality.ComponentNameMap[paddle2ComponentName] = func() plurality.Componenter { return &paddle2{} }
 }
 
-type Paddle2Component struct {
+type paddle2 struct {
 	plurality.Component
 	Speed float64
 }
 
-func (c *Paddle2Component) Name() string {
+func (c *paddle2) Name() string {
 	return paddle2ComponentName
 }
 
-func (c *Paddle2Component) Update() {
-	var ball = c.GetObjectByName("Ball")
-	var ballpos = ball.GetTransform().Position.Y
-	var ballvelx = ball.GetComponent("BallComponent").(*BallComponent).velocity.X
+func (c *paddle2) Update() {
+	var b = c.GetObjectByName("Ball")
+	var ballpos = b.GetTransform().Position.Y
+	var ballvelx = b.GetComponent("ball").(*ball).velocity.X
 	var myposy = c.GetTransform().Position.Y
 	var scaley = c.Object.GetComponent("RectangleComponent").(*plurality.RectangleComponent).Scale.Y
 	if ballvelx > 0.0 && myposy - scaley * 0.4 < ballpos {

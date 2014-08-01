@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import sys
+import os
 import json
 import copy
 import wx
@@ -8,6 +9,32 @@ import wx
 class ObjectType(object):
     GameObject = 0
     Prefab = 1
+
+class NewProject(wx.Dialog):
+    def __init__(self, *args, **kwargs):
+        super(NewProject, self).__init__(*args, **kwargs)
+        pnl = wx.Panel(self)
+        self.mainbox = wx.BoxSizer(wx.VERTICAL)
+        st1 = wx.StaticText(pnl, label='Name your project')
+        self.mainbox.Add(st1)
+        self.projName = wx.TextCtrl(pnl)
+        self.mainbox.Add(self.projName)
+        okbutton = wx.Button(pnl, label='OK')
+        okbutton.Bind(wx.EVT_BUTTON, self.OnOK)
+        self.mainbox.Add(okbutton)
+        cancelbutton = wx.Button(pnl, label='Cancel')
+        cancelbutton.Bind(wx.EVT_BUTTON, self.OnCancel)
+        self.mainbox.Add(cancelbutton)
+        pnl.SetSizerAndFit(self.mainbox)
+
+    def OnOK(self, e):
+        self.EndModal(wx.ID_OK)
+        self.Destroy()
+
+    def OnCancel(self, e):
+        self.EndModal(wx.ID_CANCEL)
+        self.Destroy()
+
 
 class Editor(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -19,54 +46,82 @@ class Editor(wx.Frame):
         self.selectedObjectType = None
         menubar = wx.MenuBar()
         fileMenu = wx.Menu()
+        newItem = fileMenu.Append(wx.ID_NEW, 'New', 'New')
         saveItem = fileMenu.Append(wx.ID_SAVE, 'Save', 'Save')
         fitem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
         menubar.Append(fileMenu, '&File')
         self.SetMenuBar(menubar)
 
-        self.Bind(wx.EVT_MENU, self.OnSave, saveItem)
+        self.Bind(wx.EVT_MENU, self.OnNew, newItem)
+        if self.model:
+            self.Bind(wx.EVT_MENU, self.OnSave, saveItem)
         self.Bind(wx.EVT_MENU, self.OnQuit, fitem)
 
-        self.SetSize((800, 600))
+        self.SetSize((800,600))
         self.SetTitle('Editor')
         self.Centre()
         self.Show(True)
+
+        if not self.model:
+            return
 
         self.panel = wx.Panel(self)
         self.mainbox = wx.BoxSizer(wx.HORIZONTAL)
         self.leftbox = wx.BoxSizer(wx.VERTICAL)
         self.rightbox = wx.BoxSizer(wx.VERTICAL)
+
+        self.objectsbox = wx.BoxSizer(wx.VERTICAL)
+        self.modifierbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.simplemodifierbox = wx.BoxSizer(wx.VERTICAL)
+        self.advancedmodifierbox = wx.BoxSizer(wx.VERTICAL)
+
         st1 = wx.StaticText(self.panel, label='New Game Object')
-        self.leftbox.Add(st1, flag=wx.RIGHT, border=8)
 
         self.newObjCtrl = wx.TextCtrl(self.panel)
-        self.leftbox.Add(self.newObjCtrl)
-
-        self.mainbox.Add(self.leftbox, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
-        self.mainbox.Add(self.rightbox, flag=wx.EXPAND|wx.RIGHT, border=10)
-        self.panel.SetSizerAndFit(self.mainbox)
 
         self.newObjCtrl.Bind(wx.EVT_KEY_UP, self.OnNewObject)
 
         self.tree = wx.TreeCtrl(self.panel, size=(400,300))
         self.tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnActiveTree)
-        self.leftbox.Add(self.tree, flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.TOP|wx.BOTTOM, border=10)
 
         self.removeObjButton = wx.Button(self.panel, label='Delete selected object')
         self.removeObjButton.Bind(wx.EVT_BUTTON, self.OnRemoveObject)
-        self.leftbox.Add(self.removeObjButton)
 
         self.createPrefabButton = wx.Button(self.panel, label='Create prefab')
         self.createPrefabButton.Bind(wx.EVT_BUTTON, self.OnCreatePrefab)
-        self.leftbox.Add(self.createPrefabButton)
 
         self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
-        self.leftbox.Add(self.compTypeCtrl)
         self.compTypeCtrl.SetSelection(0)
 
         self.newCompCtrl = wx.Button(self.panel, label='Add component')
-        self.leftbox.Add(self.newCompCtrl)
         self.newCompCtrl.Bind(wx.EVT_BUTTON, self.OnNewComponent)
+
+        self.playButton = wx.Button(self.panel, label='Play')
+        self.playButton.Bind(wx.EVT_BUTTON, self.OnPlay)
+
+        self.editButton = wx.Button(self.panel, label='Edit component')
+        self.editButton.Bind(wx.EVT_BUTTON, self.OnEdit)
+
+        # objects
+        self.objectsbox.Add(st1, flag=wx.RIGHT, border=8)
+        self.objectsbox.Add(self.newObjCtrl)
+        self.objectsbox.Add(self.tree, flag=wx.EXPAND)
+        self.leftbox.Add(self.objectsbox, border=10)
+
+        # modifiers
+        self.simplemodifierbox.Add(self.removeObjButton)
+        self.simplemodifierbox.Add(self.compTypeCtrl)
+        self.simplemodifierbox.Add(self.newCompCtrl)
+        self.advancedmodifierbox.Add(self.createPrefabButton)
+        self.advancedmodifierbox.Add(self.playButton)
+        self.advancedmodifierbox.Add(self.editButton)
+        self.modifierbox.Add(self.simplemodifierbox)
+        self.modifierbox.Add(self.advancedmodifierbox)
+        self.leftbox.Add(self.modifierbox, border=10)
+
+        self.mainbox.Add(self.leftbox, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
+        self.mainbox.Add(self.rightbox, flag=wx.EXPAND|wx.RIGHT, border=10)
+        self.panel.SetSizerAndFit(self.mainbox)
 
         self.updateGUI()
 
@@ -115,6 +170,15 @@ class Editor(wx.Frame):
         if self.model.addObject(objname):
             self.newObjCtrl.SetValue("")
             self.updateTreeView()
+
+    def OnNew(self, e):
+        dlg = NewProject(None, title='New Project')
+        res = dlg.ShowModal()
+        if res == wx.ID_OK:
+            model = newModel(res)
+            ed = Editor(None, model=model)
+            self.Destroy()
+        dlg.Destroy()
 
     def OnSave(self, e):
         self.model.save()
@@ -222,9 +286,16 @@ class Editor(wx.Frame):
             self.selectedObject = None
             self.updateGUI()
 
+    def OnPlay(self, e):
+        self.model.play()
+
+    def OnEdit(self, e):
+        self.model.editComponent(self.compTypeCtrl.GetValue())
+
 class Model(object):
-    def __init__(self, compdata, gamedata, gamefilename):
-        self.gamefilename = gamefilename
+    def __init__(self, compdata, gamedata, gamename):
+        self.gamename = gamename
+        self.gamefilename = '../examples/%s/game/game.json' % self.gamename
         self.components = dict()
         for c in compdata['components']:
             self.components[c['name']] = c
@@ -328,21 +399,38 @@ class Model(object):
         with open(self.gamefilename, 'w') as f:
             f.write(json.dumps(game, indent=4))
 
+    def play(self):
+        plpath = os.path.join(os.getcwd(), '..')
+        oldgopath = os.environ['GOPATH']
+        os.environ['GOPATH'] = os.path.join(plpath, 'go') + ':' + os.path.join(plpath, 'examples', self.gamename) + ':' + oldgopath
+        os.system('cd ../examples/%s && go install plurality && go install %s && bin/%s game/game.json' % (self.gamename, self.gamename, self.gamename))
+        os.environ['GOPATH'] = oldgopath
+
+    def editComponent(self, compname):
+        sourcepath = "../examples/%s/src/%s/%s.go" % (self.gamename, self.gamename, compname)
+        os.system('gvim %s' % sourcepath)
+
+def newModel(gamename):
+    return Model({'components':[]}, {'objects':[]}, gamename)
+
+def loadModel(gamename):
+    assert all([str.isalnum(l) for l in gamename]) and '/' not in gamename and ' ' not in gamename
+    compfilename = "../examples/%s/out.json" % gamename
+    gamefilename = "../examples/%s/game/game.json" % gamename
+    compdata = json.loads(open(compfilename, 'r').read())
+    gamedata = json.loads(open(gamefilename, 'r').read())
+    model = Model(compdata, gamedata, gamename)
+    return model
+
 def main():
     ed = wx.App()
     try:
-        compfilename = sys.argv[1]
-        gamefilename = sys.argv[2]
+        gamename = sys.argv[1]
     except IndexError:
-        print "Usage: %d <component information JSON file> <game JSON file>"
-        sys.exit(1)
-    compdata = json.loads(open(compfilename, 'r').read())
-    try:
-        gamedata = json.loads(open(gamefilename, 'r').read())
-    except IOError:
-        gamedata = {'objects':[]}
-    model = Model(compdata, gamedata, gamefilename)
-    e = Editor(None, model=model)
+        e = Editor(None, model=None)
+    else:
+        m = loadModel(gamename)
+        e = Editor(None, model=m)
     ed.MainLoop()    
 
 if __name__ == '__main__':

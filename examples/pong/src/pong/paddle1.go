@@ -5,14 +5,14 @@ import (
 	"math"
 )
 
-var paddle1ComponentName string = "Paddle1Component"
+var paddle1ComponentName string = "paddle1"
 
-type Paddle1Component struct {
+type paddle1 struct {
 	plurality.Component
 	Speed float64
 }
 
-func (c *Paddle1Component) Name() string {
+func (c *paddle1) Name() string {
 	return paddle1ComponentName
 }
 
@@ -25,10 +25,10 @@ func clampPos(posy, scaley float64, screenheight int) float64 {
 	float64(screenheight) * 0.5 - scaley * 0.5)
 }
 
-func (c *Paddle1Component) Start() {
+func (c *paddle1) Start() {
 }
 
-func (c *Paddle1Component) Update() {
+func (c *paddle1) Update() {
 	var inp = c.Input.GetAxis("Vertical")
 	if inp != 0.0 {
 		c.GetTransform().Position.Y += inp * c.Time.GetDeltaTime() * c.Speed
@@ -39,6 +39,6 @@ func (c *Paddle1Component) Update() {
 }
 
 func init() {
-	plurality.ComponentNameMap[paddle1ComponentName] = func() plurality.Componenter { return &Paddle1Component{} }
+	plurality.ComponentNameMap[paddle1ComponentName] = func() plurality.Componenter { return &paddle1{} }
 }
 

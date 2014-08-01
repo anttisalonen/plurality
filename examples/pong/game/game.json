@@ -22,7 +22,7 @@
                     }
                 }, 
                 {
-                    "type": "BallComponent", 
+                    "type": "ball", 
                     "values": {
                         "Speed": 220.0
                     }
@@ -72,7 +72,7 @@
                     "values": {
                         "Speed": 200.0
                     }, 
-                    "type": "Paddle2Component"
+                    "type": "paddle2"
                 }
             ]
         }, 
@@ -101,7 +101,7 @@
                     "values": {
                         "Speed": 200.0
                     }, 
-                    "type": "Paddle1Component"
+                    "type": "paddle1"
                 }
             ]
         }

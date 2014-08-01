@@ -5,9 +5,9 @@ import (
 	"fmt"
 )
 
-var ballComponentName string = "BallComponent"
+var ballComponentName string = "ball"
 
-type BallComponent struct {
+type ball struct {
 	plurality.Component
 	Speed float64
 	velocity plurality.Vector2
@@ -15,16 +15,16 @@ type BallComponent struct {
 	score2 int
 }
 
-func (c *BallComponent) Name() string {
+func (c *ball) Name() string {
 	return ballComponentName
 }
 
-func (c *BallComponent) Start() {
+func (c *ball) Start() {
 	c.velocity.X = c.Speed
 	c.velocity.Y = c.Speed
 }
 
-func (c *BallComponent) Update() {
+func (c *ball) Update() {
 	var pos = c.GetTransform().Position
 	pos = c.GetTransform().Position.Add(c.velocity.Multiplied(c.Time.GetDeltaTime()))
 	if pos.X > float64(c.Graphics.ScreenWidth) * 0.5 {
@@ -70,6 +70,6 @@ func (c *BallComponent) Update() {
 }
 
 func init() {
-	plurality.ComponentNameMap[ballComponentName] = func() plurality.Componenter { return &BallComponent{} }
+	plurality.ComponentNameMap[ballComponentName] = func() plurality.Componenter { return &ball{} }
 }
 
