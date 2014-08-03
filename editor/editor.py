@@ -13,15 +13,15 @@ class ObjectType(object):
     GameObject = 0
     Prefab = 1
 
-class NewProject(wx.Dialog):
+class TextDialog(wx.Dialog):
     def __init__(self, *args, **kwargs):
-        super(NewProject, self).__init__(*args, **kwargs)
+        super(TextDialog, self).__init__(*args, **kwargs)
         pnl = wx.Panel(self)
         self.mainbox = wx.BoxSizer(wx.VERTICAL)
-        st1 = wx.StaticText(pnl, label='Name your project')
+        st1 = wx.StaticText(pnl, label=kwargs['title'])
         self.mainbox.Add(st1)
-        self.projName = wx.TextCtrl(pnl)
-        self.mainbox.Add(self.projName)
+        self.textCtrl = wx.TextCtrl(pnl)
+        self.mainbox.Add(self.textCtrl)
         okbutton = wx.Button(pnl, label='OK')
         okbutton.Bind(wx.EVT_BUTTON, self.OnOK)
         self.mainbox.Add(okbutton)
@@ -96,7 +96,10 @@ class Editor(wx.Frame):
         self.compTypeCtrl = wx.ComboBox(self.panel, choices=self.model.getAvailableComponentTypes(), style=wx.CB_READONLY)
         self.compTypeCtrl.SetSelection(0)
 
-        self.newCompCtrl = wx.Button(self.panel, label='Add component')
+        self.addCompCtrl = wx.Button(self.panel, label='Add component to object')
+        self.addCompCtrl.Bind(wx.EVT_BUTTON, self.OnAddComponent)
+
+        self.newCompCtrl = wx.Button(self.panel, label='New component')
         self.newCompCtrl.Bind(wx.EVT_BUTTON, self.OnNewComponent)
 
         self.playButton = wx.Button(self.panel, label='Play')
@@ -114,10 +117,11 @@ class Editor(wx.Frame):
         # modifiers
         self.simplemodifierbox.Add(self.removeObjButton)
         self.simplemodifierbox.Add(self.compTypeCtrl)
-        self.simplemodifierbox.Add(self.newCompCtrl)
+        self.simplemodifierbox.Add(self.addCompCtrl)
+        self.simplemodifierbox.Add(self.editButton)
+        self.advancedmodifierbox.Add(self.newCompCtrl)
         self.advancedmodifierbox.Add(self.createPrefabButton)
         self.advancedmodifierbox.Add(self.playButton)
-        self.advancedmodifierbox.Add(self.editButton)
         self.modifierbox.Add(self.simplemodifierbox)
         self.modifierbox.Add(self.advancedmodifierbox)
         self.leftbox.Add(self.modifierbox, border=10)
@@ -157,8 +161,20 @@ class Editor(wx.Frame):
     def postActiveTree(self):
         self.updateComponentView()
 
-    def OnNewComponent(self, e):
+    def OnAddComponent(self, e):
         self.addComponent(self.compTypeCtrl.GetValue())
+
+    def OnNewComponent(self, e):
+        compname = self._getDialogEntry('New Component')
+        if compname:
+            self.model.newComponent(compname)
+            self.updateInterface()
+            self.model.editComponent(compname)
+            self.updateInterface()
+
+    def updateInterface(self):
+        self.model.updateInterface()
+        self.compTypeCtrl.SetItems(self.model.getAvailableComponentTypes())
 
     def OnNewObject(self, e):
         key = e.GetKeyCode()
@@ -174,14 +190,22 @@ class Editor(wx.Frame):
             self.newObjCtrl.SetValue("")
             self.updateTreeView()
 
-    def OnNew(self, e):
-        dlg = NewProject(None, title='New Project')
+    def _getDialogEntry(self, title):
+        dlg = TextDialog(None, title=title)
         res = dlg.ShowModal()
         if res == wx.ID_OK:
-            model = loadModel(dlg.projName.GetValue())
+            val = dlg.textCtrl.GetValue()
+        else:
+            val = None
+        dlg.Destroy()
+        return val
+
+    def OnNew(self, e):
+        gamename = self._getDialogEntry('New Project')
+        if gamename:
+            model = loadModel(dlg.textCtrl.GetValue())
             ed = Editor(None, model=model)
             self.Destroy()
-        dlg.Destroy()
 
     def OnSave(self, e):
         self.model.save()
@@ -294,6 +318,7 @@ class Editor(wx.Frame):
 
     def OnEdit(self, e):
         self.model.editComponent(self.compTypeCtrl.GetValue())
+        self.updateInterface()
 
 class Model(object):
     try:
@@ -310,10 +335,15 @@ class Model(object):
     def getInterfaceFilePath(self):
         return os.path.join(self.getProjectBasePath(), 'out.json')
 
+    def getSourceDir(self):
+        return os.path.join(self.getProjectBasePath(), 'src', self.gamename)
+
+    def getComponentSourcePath(self, compname):
+        return os.path.join(self.getSourceDir(), '%s.go' % compname)
+
     def createMain(self):
-        os.makedirs(os.path.join(self.getProjectBasePath(), 'src', self.gamename))
-        mainstr = '''
-package main
+        os.makedirs(self.getSourceDir())
+        mainstr = '''package main
 
 import (
     "runtime"
@@ -325,7 +355,7 @@ func main() {
     plurality.Main()
 }
 '''
-        with open(os.path.join(self.getProjectBasePath(), 'src', self.gamename, 'main.go'), 'w') as f:
+        with open(self.getComponentSourcePath('main'), 'w') as f:
             f.write(mainstr)
 
     def copyResources(self):
@@ -350,11 +380,9 @@ func main() {
         if not os.path.exists(self.compfilename):
             self.createNewGame()
 
-        compdata = json.loads(open(self.compfilename, 'r').read())
+        self.updateInterface()
+
         gamedata = json.loads(open(self.gamefilename, 'r').read())
-        self.components = dict()
-        for c in compdata['components']:
-            self.components[c['name']] = c
         self.objects = dict()
         for o in gamedata['objects']:
             self.objects[o['name']] = o
@@ -470,10 +498,13 @@ func main() {
 
     def compileGame(self):
         with self.goenv():
-            os.system('cd %s && go install plurality && go install %s && bin/%s -o out.json' % \
-                    (self.getProjectBasePath(), self.gamename, self.gamename))
+            os.system('cd %s && go install plurality && go install %s && bin/%s -o %s' % \
+                    (self.getProjectBasePath(), self.gamename, self.gamename, self.compfilename))
 
     def play(self):
+        binpath = '%s/bin/%s' % (self.getProjectBasePath(), self.gamename)
+        if os.path.exists(binpath):
+            os.unlink(binpath)
         with tempfile.NamedTemporaryFile() as f:
             f.write(self.getSave())
             f.flush()
@@ -482,13 +513,55 @@ func main() {
             except:
                 raise
             else:
-                ln = 'cd %s && bin/%s %s' % (self.getProjectBasePath(), self.gamename, f.name)
+                ln = 'cd %s && %s %s' % (self.getProjectBasePath(), binpath, f.name)
                 os.system(ln)
 
+    def updateInterface(self):
+        compdata = json.loads(open(self.compfilename, 'r').read())
+        self.components = dict()
+        for c in compdata['components']:
+            self.components[c['name']] = c
+
     def editComponent(self, compname):
-        sourcepath = "../examples/%s/src/%s/%s.go" % (self.gamename, self.gamename, compname)
+        sourcepath = self.getComponentSourcePath(compname)
         if os.path.exists(sourcepath):
             os.system('gvim %s' % sourcepath)
+            self.compileGame()
+
+    def _newComponentTemplate(self, compname):
+        return '''package main
+
+import (
+        "plurality"
+)
+
+type %s struct {
+        plurality.Component
+}
+
+func (c *%s) Name() string {
+        return "%s"
+}
+
+func init() {
+        plurality.ComponentNameMap["%s"] = func() plurality.Componenter { return &%s{} }
+}
+
+/* Game code starts here */
+
+func (c *%s) Start() {
+}
+
+func (c *%s) Update() {
+}
+
+''' % ((compname,) * 7)
+
+    def newComponent(self, compname):
+        comppath = self.getComponentSourcePath(compname)
+        assert not os.path.exists(comppath)
+        with open(comppath, 'w') as f:
+            f.write(self._newComponentTemplate(compname))
 
 def loadModel(gamename):
     gamename = str(gamename)
