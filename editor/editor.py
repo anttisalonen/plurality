@@ -5,6 +5,8 @@ import os
 import json
 import copy
 from contextlib import contextmanager
+import tempfile
+
 import wx
 
 class ObjectType(object):
@@ -294,7 +296,10 @@ class Editor(wx.Frame):
         self.model.editComponent(self.compTypeCtrl.GetValue())
 
 class Model(object):
-    basepath = os.path.join(os.environ['HOME'], '.plurality', 'projects')
+    try:
+        basepath = os.path.abspath(os.environ['PLURALITY_PROJECTPATH'])
+    except KeyError:
+        basepath = os.path.join(os.environ['HOME'], '.plurality', 'projects')
 
     def getProjectBasePath(self):
         return os.path.join(Model.basepath, self.gamename)
@@ -443,18 +448,21 @@ func main() {
     def createPrefab(self, objname):
         self.prefabs[objname] = copy.deepcopy(self.objects[objname])
 
-    def save(self):
+    def getSave(self):
         game = dict()
         game['objects'] = self.objects.values()
         game['prefabs'] = self.prefabs.values()
+        return json.dumps(game, indent=4)
+
+    def save(self):
         with open(self.gamefilename, 'w') as f:
-            f.write(json.dumps(game, indent=4))
+            f.write(self.getSave())
 
     @contextmanager
     def goenv(self):
         plpath = os.path.join(os.getcwd(), '..')
         oldgopath = os.environ['GOPATH']
-        os.environ['GOPATH'] = self.getProjectBasePath() + ':' + os.path.join(plpath, 'go') + ':' + oldgopath
+        os.environ['GOPATH'] = self.getProjectBasePath() + ':' + os.path.abspath(os.path.join(plpath, 'go')) + ':' + oldgopath
         try:
             yield
         finally:
@@ -466,17 +474,21 @@ func main() {
                     (self.getProjectBasePath(), self.gamename, self.gamename))
 
     def play(self):
-        self.save()
-        try:
-            self.compileGame()
-        except:
-            raise
-        else:
-            os.system('cd %s && bin/%s game/game.json' % (self.getProjectBasePath(), self.gamename))
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(self.getSave())
+            f.flush()
+            try:
+                self.compileGame()
+            except:
+                raise
+            else:
+                ln = 'cd %s && bin/%s %s' % (self.getProjectBasePath(), self.gamename, f.name)
+                os.system(ln)
 
     def editComponent(self, compname):
         sourcepath = "../examples/%s/src/%s/%s.go" % (self.gamename, self.gamename, compname)
-        os.system('gvim %s' % sourcepath)
+        if os.path.exists(sourcepath):
+            os.system('gvim %s' % sourcepath)
 
 def loadModel(gamename):
     gamename = str(gamename)
