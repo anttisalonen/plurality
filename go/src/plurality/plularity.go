@@ -77,6 +77,7 @@ func (v Vector2) Multiplied(a float64) Vector2 {
 
 func Main() {
 	// OpenGL needs to be locked on this thread - see http://stackoverflow.com/questions/21010854/golang-fmt-println-causes-game-crash
+	// app's main function should do this but have it here as well just in case
 	runtime.LockOSThread()
 	if len(os.Args) < 2 {
 		fmt.Printf("Usage: %s <game JSON file>\n", os.Args[0])

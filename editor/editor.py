@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import copy
+from contextlib import contextmanager
 import wx
 
 class ObjectType(object):
@@ -175,7 +176,7 @@ class Editor(wx.Frame):
         dlg = NewProject(None, title='New Project')
         res = dlg.ShowModal()
         if res == wx.ID_OK:
-            model = newModel(res)
+            model = loadModel(dlg.projName.GetValue())
             ed = Editor(None, model=model)
             self.Destroy()
         dlg.Destroy()
@@ -293,9 +294,59 @@ class Editor(wx.Frame):
         self.model.editComponent(self.compTypeCtrl.GetValue())
 
 class Model(object):
-    def __init__(self, compdata, gamedata, gamename):
+    basepath = os.path.join(os.environ['HOME'], '.plurality', 'projects')
+
+    def getProjectBasePath(self):
+        return os.path.join(Model.basepath, self.gamename)
+
+    def getGameFilePath(self):
+        return os.path.join(self.getProjectBasePath(), 'game', 'game.json')
+
+    def getInterfaceFilePath(self):
+        return os.path.join(self.getProjectBasePath(), 'out.json')
+
+    def createMain(self):
+        os.makedirs(os.path.join(self.getProjectBasePath(), 'src', self.gamename))
+        mainstr = '''
+package main
+
+import (
+    "runtime"
+    "plurality"
+)
+
+func main() {
+    runtime.LockOSThread()
+    plurality.Main()
+}
+'''
+        with open(os.path.join(self.getProjectBasePath(), 'src', self.gamename, 'main.go'), 'w') as f:
+            f.write(mainstr)
+
+    def copyResources(self):
+        sharepath = os.path.join(Model.basepath, 'share')
+        if not os.path.exists(sharepath):
+            os.symlink(os.path.abspath('../share'), sharepath)
+
+    def createNewGame(self):
+        os.makedirs(os.path.join(self.getProjectBasePath(), 'game'))
+        os.makedirs(os.path.join(self.getProjectBasePath(), 'share'))
+        with open(self.gamefilename, 'w') as f:
+            f.write(json.dumps({'objects':[], 'prefabs':[]}, indent=4))
+        self.createMain()
+        self.copyResources()
+        self.compileGame()
+
+    def __init__(self, gamename):
         self.gamename = gamename
-        self.gamefilename = '../examples/%s/game/game.json' % self.gamename
+        self.gamefilename = self.getGameFilePath()
+        self.compfilename = self.getInterfaceFilePath()
+
+        if not os.path.exists(self.compfilename):
+            self.createNewGame()
+
+        compdata = json.loads(open(self.compfilename, 'r').read())
+        gamedata = json.loads(open(self.gamefilename, 'r').read())
         self.components = dict()
         for c in compdata['components']:
             self.components[c['name']] = c
@@ -308,7 +359,7 @@ class Model(object):
             self.prefabs[o['name']] = o
 
     def getAvailableComponentTypes(self):
-        return [c['name'] for c in self.components.values()]
+        return [c['name'] for c in self.components.values() if c['name'] != 'TransformComponent']
 
     def addComponent(self, objname, objtype, comptype):
         obj = self._getObjectOnType(objname, objtype)
@@ -399,27 +450,38 @@ class Model(object):
         with open(self.gamefilename, 'w') as f:
             f.write(json.dumps(game, indent=4))
 
-    def play(self):
+    @contextmanager
+    def goenv(self):
         plpath = os.path.join(os.getcwd(), '..')
         oldgopath = os.environ['GOPATH']
-        os.environ['GOPATH'] = os.path.join(plpath, 'go') + ':' + os.path.join(plpath, 'examples', self.gamename) + ':' + oldgopath
-        os.system('cd ../examples/%s && go install plurality && go install %s && bin/%s game/game.json' % (self.gamename, self.gamename, self.gamename))
-        os.environ['GOPATH'] = oldgopath
+        os.environ['GOPATH'] = self.getProjectBasePath() + ':' + os.path.join(plpath, 'go') + ':' + oldgopath
+        try:
+            yield
+        finally:
+            os.environ['GOPATH'] = oldgopath
+
+    def compileGame(self):
+        with self.goenv():
+            os.system('cd %s && go install plurality && go install %s && bin/%s -o out.json' % \
+                    (self.getProjectBasePath(), self.gamename, self.gamename))
+
+    def play(self):
+        self.save()
+        try:
+            self.compileGame()
+        except:
+            raise
+        else:
+            os.system('cd %s && bin/%s game/game.json' % (self.getProjectBasePath(), self.gamename))
 
     def editComponent(self, compname):
         sourcepath = "../examples/%s/src/%s/%s.go" % (self.gamename, self.gamename, compname)
         os.system('gvim %s' % sourcepath)
 
-def newModel(gamename):
-    return Model({'components':[]}, {'objects':[]}, gamename)
-
 def loadModel(gamename):
+    gamename = str(gamename)
     assert all([str.isalnum(l) for l in gamename]) and '/' not in gamename and ' ' not in gamename
-    compfilename = "../examples/%s/out.json" % gamename
-    gamefilename = "../examples/%s/game/game.json" % gamename
-    compdata = json.loads(open(compfilename, 'r').read())
-    gamedata = json.loads(open(gamefilename, 'r').read())
-    model = Model(compdata, gamedata, gamename)
+    model = Model(gamename)
     return model
 
 def main():
