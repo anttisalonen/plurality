@@ -12,25 +12,22 @@ type Component struct {
 
 func (c *Component) SetObject(obj *GameObject) {
 	c.Object = obj
+	c.gameApp = obj.gameApp
+	c.Graphics = &c.gameApp.graphics
+	c.Input = &c.gameApp.input
+	c.Time = &c.gameApp.time
 }
 
 func (c *Component) GetObjectByName(objname string) *GameObject {
 	var obj = c.gameApp.objMap[objname]
-	return &obj
-}
-
-func (c *Component) SetGame(g *GameApp) {
-	c.gameApp = g
-	c.Graphics = &g.graphics
-	c.Input = &g.input
-	c.Time = &g.time
+	return obj
 }
 
 func (c *Component) Instantiate(objtype string, pos Vector2) *GameObject {
 	return c.gameApp.Instantiate(objtype, pos)
 }
 
-func (c *Component) internalInit(game *GameApp) {
+func (c *Component) internalInit() {
 }
 
 func (c *Component) Start() {
@@ -52,12 +49,11 @@ func (c *Component) GetTransform() *TransformComponent {
 type Componenter interface {
 	Named
 	GetTransform() *TransformComponent
-	internalInit(game *GameApp)
+	internalInit()
 	Start()
 	PreUpdate()
 	PostUpdate()
 	Update()
 	SetObject(obj *GameObject)
-	SetGame(g *GameApp)
 }
 

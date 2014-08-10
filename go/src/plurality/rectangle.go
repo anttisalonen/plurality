@@ -19,10 +19,6 @@ func (c *RectangleComponent) Name() string {
 	return rectangleComponentName
 }
 
-func (c *RectangleComponent) internalInit(game *GameApp) {
-	c.graphics = &game.graphics
-}
-
 func (c *RectangleComponent) Start() {
 	c.vertexBuffer = gl.GenBuffer()
 	c.vertexBuffer.Bind(gl.ARRAY_BUFFER)

@@ -17,6 +17,7 @@ type Named interface {
 type GameObject struct {
 	name string
 	components []Componenter
+	gameApp *GameApp
 }
 
 func (g *GameObject) GetComponent(comptype string) Componenter {
@@ -38,7 +39,7 @@ func (o *GameObject) GetTransform() *TransformComponent {
 }
 
 type GameApp struct {
-	objMap map[string]GameObject
+	objMap map[string]*GameObject
 	graphics Graphics
 	input Input
 	time Time
@@ -55,11 +56,11 @@ func (g *GameApp) Instantiate(objtype string, pos Vector2) *GameObject {
 	g.nextPrefabIndex++
 
 	for _, comp := range objinst.components {
-		comp.SetObject(&objinst)
-		comp.internalInit(g)
+		comp.SetObject(objinst)
+		comp.internalInit()
 		comp.Start()
 	}
-	return &objinst
+	return objinst
 }
 
 type Vector2 struct {
@@ -116,10 +117,10 @@ func (game *GameApp) Prepare() {
 
 func (game *GameApp) Run(jsonData map[string]interface{}) {
 	var objects, prefabMap = loadGame(game, jsonData)
-	game.objMap = make(map[string]GameObject)
-	for _, obj := range objects {
-		var on = obj.name
-		game.objMap[on] = obj
+	game.objMap = make(map[string]*GameObject)
+	for i, _ := range objects {
+		var on = objects[i].name
+		game.objMap[on] = objects[i]
 	}
 
 	game.prefabMap = prefabMap
@@ -127,7 +128,7 @@ func (game *GameApp) Run(jsonData map[string]interface{}) {
 	runGame(game)
 }
 
-func loadGame(game* GameApp, jsonData map[string]interface{}) ([]GameObject, map[string]interface{}) {
+func loadGame(game* GameApp, jsonData map[string]interface{}) ([]*GameObject, map[string]interface{}) {
 	var objs = loadObjects(game, jsonData["objects"].([]interface{}))
 	var prefabMap = loadPrefabs(jsonData["prefabs"].([]interface{}))
 	return objs, prefabMap
@@ -144,8 +145,8 @@ func loadPrefabs(objs []interface{}) map[string]interface{} {
 	return prefabMap
 }
 
-func loadObjects(game* GameApp, objs []interface{}) []GameObject {
-	var objects = []GameObject{}
+func loadObjects(game* GameApp, objs []interface{}) []*GameObject {
+	var objects = []*GameObject{}
 	for _, jobj := range objs {
 		objmap := jobj.(map[string]interface{})
 		var obj = prefabToObject(game, objmap)
@@ -155,16 +156,16 @@ func loadObjects(game* GameApp, objs []interface{}) []GameObject {
 	return objects
 }
 
-func prefabToObject(game *GameApp, objmap map[string]interface{}) GameObject {
+func prefabToObject(game *GameApp, objmap map[string]interface{}) *GameObject {
 	var obj GameObject
 	obj.name = objmap["name"].(string)
+	obj.gameApp = game
 	components := objmap["components"].([]interface{})
 	for _, jcomp := range components {
 		comp := jcomp.(map[string]interface{})
 		typeName := comp["type"]
 		compInst := ComponentNameMap[typeName.(string)]()
 		compInst.SetObject(&obj)
-		compInst.SetGame(game)
 		obj.components = append(obj.components, compInst)
 
 		for jvaluename, jvaluedata := range comp["values"].(map[string]interface{}) {
@@ -177,13 +178,13 @@ func prefabToObject(game *GameApp, objmap map[string]interface{}) GameObject {
 			case reflect.Float64:
 				v, err := jvaluedata.(json.Number).Float64()
 				if err != nil {
-					fmt.Println("Error on field %s: %s", jvaluename, err)
+					fmt.Printf("Error on field %s: %s\n", jvaluename, err)
 				}
 				fieldValue.SetFloat(v)
 			case reflect.Int:
 				v, err := jvaluedata.(json.Number).Int64()
 				if err != nil {
-					fmt.Println("Error on field %s: %s", jvaluename, err)
+					fmt.Printf("Error on field %s: %s\n", jvaluename, err)
 				}
 				fieldValue.SetInt(v)
 			case reflect.String:
@@ -195,7 +196,7 @@ func prefabToObject(game *GameApp, objmap map[string]interface{}) GameObject {
 			}
 		}
 	}
-	return obj
+	return &obj
 }
 
 func readVector2(fieldValue *reflect.Value, jvaluedata interface{}) {
@@ -220,7 +221,7 @@ func runGame(game *GameApp) {
 	var objects = game.objMap
 	for _, obj := range objects {
 		for _, comp := range obj.components {
-			comp.internalInit(game)
+			comp.internalInit()
 		}
 	}
 
