@@ -23,9 +23,8 @@ func (c *RectangleComponent) Start() {
 		 0.5 * float32(c.Scale.X),  0.5 * float32(c.Scale.Y), 0.0,
 		 0.5 * float32(c.Scale.X), -0.5 * float32(c.Scale.Y), 0.0}
 	meshc.SetVertices(vertexBufferData)
-
-	var texcoordBufferData = []float32{0.0, 0.0,   0.0, 1.0,   1.0, 1.0,  1.0, 0.0}
-	meshc.SetTextureCoordinates(texcoordBufferData)
+	var indexBufferData = []int16{0, 2, 1, 0, 3, 2}
+	meshc.SetIndices(indexBufferData)
 }
 
 func init() {

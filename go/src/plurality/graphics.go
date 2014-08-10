@@ -69,6 +69,8 @@ func (c *Graphics) Init(width int, height int) {
 	fmt.Println("GL shading language version:", gl.GetString(gl.SHADING_LANGUAGE_VERSION))
 
 	gl.ClearColor(0, 0, 0, 0)
+	gl.Enable(gl.CULL_FACE)
+	gl.Enable(gl.TEXTURE_2D)
 	c.program = initShader()
 	c.program.Use()
 }
