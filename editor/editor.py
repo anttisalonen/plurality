@@ -95,7 +95,6 @@ class Editor(wx.Frame):
 
         self.SetSize((800,600))
         self.SetTitle('Editor')
-        self.Centre()
         self.Show(True)
 
         if not self.model:
@@ -120,7 +119,7 @@ class Editor(wx.Frame):
 
         self.newObjCtrl.Bind(wx.EVT_KEY_UP, self.OnNewObject)
 
-        self.tree = wx.TreeCtrl(self.panel, size=(400,300))
+        self.tree = wx.TreeCtrl(self.panel)
         self.tree.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnActiveTree)
 
         self.removeObjButton = wx.Button(self.panel, label='Delete selected object')
@@ -144,35 +143,36 @@ class Editor(wx.Frame):
         self.editButton = wx.Button(self.panel, label='Edit component')
         self.editButton.Bind(wx.EVT_BUTTON, self.OnEdit)
 
-        self.consoleCtrl = wx.TextCtrl(self.panel, style=wx.TE_MULTILINE, size=(790, 80))
+        self.consoleCtrl = wx.TextCtrl(self.panel, style=wx.TE_MULTILINE)
         self.consoleCtrl.SetEditable(False)
         self.redirectOutput = RedirectText(self.consoleCtrl)
         self.model.setOutputTarget(self.redirectOutput)
 
         # objects
-        self.objectsbox.Add(st1, flag=wx.RIGHT)
-        self.objectsbox.Add(self.newObjCtrl)
-        self.objectsbox.Add(self.tree, flag=wx.EXPAND)
-        self.leftbox.Add(self.objectsbox)
+        self.objectsbox.Add(st1, flag=wx.RIGHT|wx.EXPAND)
+        self.objectsbox.Add(self.newObjCtrl, flag=wx.EXPAND)
+        self.objectsbox.Add(self.tree, flag=wx.EXPAND, proportion=1)
+        self.leftbox.Add(self.objectsbox, flag=wx.EXPAND, proportion=2)
 
         # modifiers
-        self.simplemodifierbox.Add(self.removeObjButton)
-        self.simplemodifierbox.Add(self.compTypeCtrl)
-        self.simplemodifierbox.Add(self.addCompCtrl)
-        self.simplemodifierbox.Add(self.editButton)
-        self.advancedmodifierbox.Add(self.newCompCtrl)
-        self.advancedmodifierbox.Add(self.createPrefabButton)
-        self.advancedmodifierbox.Add(self.playButton)
-        self.modifierbox.Add(self.simplemodifierbox)
-        self.modifierbox.Add(self.advancedmodifierbox)
-        self.leftbox.Add(self.modifierbox)
+        self.simplemodifierbox.Add(self.removeObjButton, flag=wx.EXPAND)
+        self.simplemodifierbox.Add(self.compTypeCtrl, flag=wx.EXPAND)
+        self.simplemodifierbox.Add(self.addCompCtrl, flag=wx.EXPAND)
+        self.simplemodifierbox.Add(self.editButton, flag=wx.EXPAND)
+        self.advancedmodifierbox.Add(self.newCompCtrl, flag=wx.EXPAND)
+        self.advancedmodifierbox.Add(self.createPrefabButton, flag=wx.EXPAND)
+        self.advancedmodifierbox.Add(self.playButton, flag=wx.EXPAND)
+        self.modifierbox.Add(self.simplemodifierbox, flag=wx.EXPAND, proportion=1)
+        self.modifierbox.Add(self.advancedmodifierbox, flag=wx.EXPAND, proportion=1)
+        self.leftbox.Add(self.modifierbox, flag=wx.EXPAND, proportion=1)
 
-        self.editorbox.Add(self.leftbox, flag=wx.EXPAND|wx.ALL)
-        self.editorbox.Add(self.rightbox, flag=wx.EXPAND|wx.RIGHT)
-        self.mainbox.Add(self.editorbox, flag=wx.EXPAND|wx.ALL)
+        self.editorbox.Add(self.leftbox, flag=wx.EXPAND|wx.ALL, proportion=1)
+        self.editorbox.Add(self.rightbox, flag=wx.EXPAND|wx.ALL, proportion=1)
 
-        self.consolebox.Add(self.consoleCtrl, flag=wx.EXPAND|wx.ALL)
-        self.mainbox.Add(self.consolebox, flag=wx.EXPAND|wx.ALL)
+        self.consolebox.Add(self.consoleCtrl, flag=wx.EXPAND|wx.ALL, proportion=1)
+
+        self.mainbox.Add(self.editorbox, flag=wx.EXPAND|wx.ALL, proportion=4)
+        self.mainbox.Add(self.consolebox, flag=wx.EXPAND|wx.ALL, proportion=1)
 
         self.panel.SetSizerAndFit(self.mainbox)
 
@@ -334,7 +334,7 @@ class Editor(wx.Frame):
                         self.ComponentWidgets.append(w)
 
         for widget in self.ComponentWidgets:
-            self.rightbox.Add(widget, wx.EXPAND)
+            self.rightbox.Add(widget, flag=wx.EXPAND)
         self.panel.SetSizerAndFit(self.mainbox)
 
     def ComponentChanged(self, e, compdata):
