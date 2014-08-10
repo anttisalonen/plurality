@@ -6,6 +6,8 @@ import json
 import copy
 from contextlib import contextmanager
 import tempfile
+import subprocess
+import fcntl
 
 import wx
 
@@ -38,6 +40,35 @@ class TextDialog(wx.Dialog):
         self.EndModal(wx.ID_CANCEL)
         self.Destroy()
 
+class RedirectText(object):
+    def __init__(self, aWxTextCtrl):
+        self.streams = list()
+        self.out = aWxTextCtrl
+
+    def addStream(self, p):
+        flags = fcntl.fcntl(p.stdout, fcntl.F_GETFL)
+        fcntl.fcntl(p.stdout, fcntl.F_SETFL, flags|os.O_NONBLOCK)
+        self.streams.append(p)
+
+    def addData(self, string):
+        self.out.AppendText(string)
+
+    def update(self):
+        leftstreams = list()
+        for p in self.streams:
+            p.poll()
+            if p.returncode is None:
+                leftstreams.append(p)
+
+        self.streams = leftstreams
+        for p in self.streams:
+            try:
+                line = p.stdout.readline()
+            except IOError:
+                pass
+            else:
+                if line:
+                    self.out.AppendText(line)
 
 class Editor(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -60,6 +91,8 @@ class Editor(wx.Frame):
             self.Bind(wx.EVT_MENU, self.OnSave, saveItem)
         self.Bind(wx.EVT_MENU, self.OnQuit, fitem)
 
+        self.Bind(wx.EVT_IDLE, self.OnIdle)
+
         self.SetSize((800,600))
         self.SetTitle('Editor')
         self.Centre()
@@ -69,12 +102,15 @@ class Editor(wx.Frame):
             return
 
         self.panel = wx.Panel(self)
-        self.mainbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.mainbox = wx.BoxSizer(wx.VERTICAL)
+        self.editorbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.consolebox = wx.BoxSizer(wx.HORIZONTAL)
         self.leftbox = wx.BoxSizer(wx.VERTICAL)
         self.rightbox = wx.BoxSizer(wx.VERTICAL)
 
         self.objectsbox = wx.BoxSizer(wx.VERTICAL)
         self.modifierbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.consolebox = wx.BoxSizer(wx.HORIZONTAL)
         self.simplemodifierbox = wx.BoxSizer(wx.VERTICAL)
         self.advancedmodifierbox = wx.BoxSizer(wx.VERTICAL)
 
@@ -108,11 +144,16 @@ class Editor(wx.Frame):
         self.editButton = wx.Button(self.panel, label='Edit component')
         self.editButton.Bind(wx.EVT_BUTTON, self.OnEdit)
 
+        self.consoleCtrl = wx.TextCtrl(self.panel, style=wx.TE_MULTILINE, size=(790, 80))
+        self.consoleCtrl.SetEditable(False)
+        self.redirectOutput = RedirectText(self.consoleCtrl)
+        self.model.setOutputTarget(self.redirectOutput)
+
         # objects
-        self.objectsbox.Add(st1, flag=wx.RIGHT, border=8)
+        self.objectsbox.Add(st1, flag=wx.RIGHT)
         self.objectsbox.Add(self.newObjCtrl)
         self.objectsbox.Add(self.tree, flag=wx.EXPAND)
-        self.leftbox.Add(self.objectsbox, border=10)
+        self.leftbox.Add(self.objectsbox)
 
         # modifiers
         self.simplemodifierbox.Add(self.removeObjButton)
@@ -124,10 +165,15 @@ class Editor(wx.Frame):
         self.advancedmodifierbox.Add(self.playButton)
         self.modifierbox.Add(self.simplemodifierbox)
         self.modifierbox.Add(self.advancedmodifierbox)
-        self.leftbox.Add(self.modifierbox, border=10)
+        self.leftbox.Add(self.modifierbox)
 
-        self.mainbox.Add(self.leftbox, flag=wx.EXPAND|wx.LEFT|wx.TOP, border=10)
-        self.mainbox.Add(self.rightbox, flag=wx.EXPAND|wx.RIGHT, border=10)
+        self.editorbox.Add(self.leftbox, flag=wx.EXPAND|wx.ALL)
+        self.editorbox.Add(self.rightbox, flag=wx.EXPAND|wx.RIGHT)
+        self.mainbox.Add(self.editorbox, flag=wx.EXPAND|wx.ALL)
+
+        self.consolebox.Add(self.consoleCtrl, flag=wx.EXPAND|wx.ALL)
+        self.mainbox.Add(self.consolebox, flag=wx.EXPAND|wx.ALL)
+
         self.panel.SetSizerAndFit(self.mainbox)
 
         self.updateGUI()
@@ -209,6 +255,9 @@ class Editor(wx.Frame):
 
     def OnSave(self, e):
         self.model.save()
+
+    def OnIdle(self, e):
+        self.redirectOutput.update()
 
     def OnQuit(self, e):
         self.Close()
@@ -332,6 +381,9 @@ class Model(object):
     def getGameFilePath(self):
         return os.path.join(self.getProjectBasePath(), 'game', 'game.json')
 
+    def getEditorGameFilePath(self):
+        return os.path.join(self.getProjectBasePath(), 'game', 'editor_last.json')
+
     def getInterfaceFilePath(self):
         return os.path.join(self.getProjectBasePath(), 'out.json')
 
@@ -363,22 +415,28 @@ func main() {
         if not os.path.exists(sharepath):
             os.symlink(os.path.abspath('../share'), sharepath)
 
-    def createNewGame(self):
+    def _createNewGame(self):
         os.makedirs(os.path.join(self.getProjectBasePath(), 'game'))
         os.makedirs(os.path.join(self.getProjectBasePath(), 'share'))
         with open(self.gamefilename, 'w') as f:
             f.write(json.dumps({'objects':[], 'prefabs':[]}, indent=4))
         self.createMain()
         self.copyResources()
-        self.compileGame()
+        succ = self._compileGame()
+        if not succ:
+            raise RuntimeError('Unable to compile created game')
+
+    def setOutputTarget(self, out):
+        self.outputTarget = out
 
     def __init__(self, gamename):
         self.gamename = gamename
         self.gamefilename = self.getGameFilePath()
+        self.editorgamefilename = self.getEditorGameFilePath()
         self.compfilename = self.getInterfaceFilePath()
 
         if not os.path.exists(self.compfilename):
-            self.createNewGame()
+            self._createNewGame()
 
         self.updateInterface()
 
@@ -496,21 +554,30 @@ func main() {
         finally:
             os.environ['GOPATH'] = oldgopath
 
-    def compileGame(self):
+    def _compileGame(self):
         with self.goenv():
-            return os.system('cd %s && go install plurality && go install %s && bin/%s -o %s' % \
-                    (self.getProjectBasePath(), self.gamename, self.gamename, self.compfilename)) == 0
+            try:
+                output = subprocess.check_output('cd %s && go install plurality && go install %s && bin/%s -o %s' % \
+                        (self.getProjectBasePath(), self.gamename, self.gamename, self.compfilename),
+                        stderr=subprocess.STDOUT, shell=True)
+            except subprocess.CalledProcessError as e:
+                self.outputTarget.addData(e.output)
+                return False
+            else:
+                self.outputTarget.addData(output)
+                return True
 
     def play(self):
         binpath = '%s/bin/%s' % (self.getProjectBasePath(), self.gamename)
         if os.path.exists(binpath):
             os.unlink(binpath)
-        with tempfile.NamedTemporaryFile() as f:
+        with open(self.editorgamefilename, 'w') as f:
             f.write(self.getSave())
-            f.flush()
-            if self.compileGame():
-                ln = 'cd %s && %s %s' % (self.getProjectBasePath(), binpath, f.name)
-                os.system(ln)
+        succ = self._compileGame()
+        if succ:
+            ln = 'cd %s && %s %s' % (self.getProjectBasePath(), binpath, self.editorgamefilename)
+            p = subprocess.Popen(ln, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            self.outputTarget.addStream(p)
 
     def updateInterface(self):
         compdata = json.loads(open(self.compfilename, 'r').read())
@@ -522,7 +589,6 @@ func main() {
         sourcepath = self.getComponentSourcePath(compname)
         if os.path.exists(sourcepath):
             os.system('gvim %s' % sourcepath)
-            self.compileGame()
 
     def _newComponentTemplate(self, compname):
         return '''package main
