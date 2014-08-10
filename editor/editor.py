@@ -535,10 +535,6 @@ import (
         "plurality"
 )
 
-type %s struct {
-        plurality.Component
-}
-
 func (c *%s) Name() string {
         return "%s"
 }
@@ -548,6 +544,10 @@ func init() {
 }
 
 /* Game code starts here */
+
+type %s struct {
+        plurality.Component
+}
 
 func (c *%s) Start() {
 }
