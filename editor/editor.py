@@ -498,8 +498,8 @@ func main() {
 
     def compileGame(self):
         with self.goenv():
-            os.system('cd %s && go install plurality && go install %s && bin/%s -o %s' % \
-                    (self.getProjectBasePath(), self.gamename, self.gamename, self.compfilename))
+            return os.system('cd %s && go install plurality && go install %s && bin/%s -o %s' % \
+                    (self.getProjectBasePath(), self.gamename, self.gamename, self.compfilename)) == 0
 
     def play(self):
         binpath = '%s/bin/%s' % (self.getProjectBasePath(), self.gamename)
@@ -508,11 +508,7 @@ func main() {
         with tempfile.NamedTemporaryFile() as f:
             f.write(self.getSave())
             f.flush()
-            try:
-                self.compileGame()
-            except:
-                raise
-            else:
+            if self.compileGame():
                 ln = 'cd %s && %s %s' % (self.getProjectBasePath(), binpath, f.name)
                 os.system(ln)
 
