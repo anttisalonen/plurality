@@ -29,6 +29,22 @@ func (g *GameObject) GetComponent(comptype string) Componenter {
 	return nil
 }
 
+func (obj *GameObject) AddComponent(comptype string) Componenter {
+	for _, c := range obj.components {
+		if c.Name() == comptype {
+			panic("Can't add another component of type " + comptype)
+		}
+	}
+
+	compInst := ComponentNameMap[comptype]()
+	compInst.SetObject(obj)
+	compInst.internalInit()
+	compInst.Start()
+	obj.components = append(obj.components, compInst)
+
+	return compInst
+}
+
 func (o *GameObject) GetTransform() *TransformComponent {
 	var t = o.components[0]
 	if t.Name() != "TransformComponent" {
